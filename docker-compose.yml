@@ -37,13 +37,13 @@ services:
     environment:
       PORT: "${PORT:-3000}"
       SEARXNG_URL: "http://searxng:8080"
-      SEARXNG_ENGINES: "google,bing,duckduckgo"
-      SEARXNG_TIMEOUT_MS: "15000"
-      SEARXNG_RETRIES: "3"
-      SEARXNG_RETRY_BACKOFF_MS: "1000"
+      SEARXNG_ENGINES: "google,yandex"
+      SEARXNG_TIMEOUT_MS: "12000"
+      SEARXNG_RETRIES: "2"
+      SEARXNG_RETRY_BACKOFF_MS: "350"
       SEARXNG_CATEGORIES: "general"
-      RATE_LIMIT_PER_SECOND: "2"
-      RATE_LIMIT_PER_MONTH: "5000"
+      RATE_LIMIT_PER_SECOND: "20"
+      RATE_LIMIT_PER_MONTH: "15000"
     depends_on:
       searxng:
         condition: service_healthy
@@ -58,3 +58,21 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
+
+  mcp-memory:
+    image: mcp/memory
+    container_name: mcp-memory-server
+    ports:
+      - "${MEMORY_PORT:-3001}:3000"
+    volumes:
+      - mcp-memory-data:/app/dist
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - 'http://localhost:3000/health' > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  mcp-memory-data:
