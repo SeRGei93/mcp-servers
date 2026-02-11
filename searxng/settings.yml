@@ -15,6 +15,17 @@ server:
   image_proxy: false
   secret_key: "change-this-in-production"
 
+# Настройки для обхода детекции ботов
+outgoing:
+  request_timeout: 10.0
+  useragent_suffix: ""
+  pool_connections: 100
+  pool_maxsize: 20
+  enable_http2: true
+  # Ротация User-Agent
+  using_tor_proxy: false
+  extra_proxy_timeout: 10.0
+
 valkey:
   url: redis://redis:6379/0
 
@@ -25,4 +36,6 @@ engines:
   - name: ahmia
     disabled: true
   - name: torch
+    disabled: true
+  - name: yandex
     disabled: true

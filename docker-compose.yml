@@ -37,13 +37,13 @@ services:
     environment:
       PORT: "${PORT:-3000}"
       SEARXNG_URL: "http://searxng:8080"
-      SEARXNG_ENGINES: "google,yandex"
-      SEARXNG_TIMEOUT_MS: "12000"
-      SEARXNG_RETRIES: "2"
-      SEARXNG_RETRY_BACKOFF_MS: "350"
+      SEARXNG_ENGINES: "google,bing,duckduckgo"
+      SEARXNG_TIMEOUT_MS: "15000"
+      SEARXNG_RETRIES: "3"
+      SEARXNG_RETRY_BACKOFF_MS: "1000"
       SEARXNG_CATEGORIES: "general"
-      RATE_LIMIT_PER_SECOND: "20"
-      RATE_LIMIT_PER_MONTH: "15000"
+      RATE_LIMIT_PER_SECOND: "2"
+      RATE_LIMIT_PER_MONTH: "5000"
     depends_on:
       searxng:
         condition: service_healthy
