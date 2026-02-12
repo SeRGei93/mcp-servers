@@ -1,4 +1,7 @@
-use_default_settings: true
+use_default_settings:
+  engines:
+    keep_only:
+      - google
 
 general:
   instance_name: "Local SearxNG"
@@ -17,8 +20,3 @@ server:
 
 valkey:
   url: redis://redis:6379/0
-
-# Оставляем только Google поиск
-engines:
-  keep_only:
-    - google
