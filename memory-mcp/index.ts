@@ -229,14 +229,15 @@ const RelationSchema = z.object({
   relationType: z.string().describe("The type of the relation")
 });
 
-// Create MCP Server
-const server = new McpServer({
-  name: "memory-server",
-  version: "0.6.3-http",
-});
+// Create server factory function that returns a NEW server instance for each request
+function createServer(): McpServer {
+  const server = new McpServer({
+    name: "memory-server",
+    version: "0.6.3-http",
+  });
 
-// Register all tools (same as original)
-server.registerTool(
+  // Register all tools
+  server.registerTool(
   "create_entities",
   {
     title: "Create Entities",
@@ -413,8 +414,6 @@ server.registerTool(
   }
 );
 
-// Create server factory function
-function createServer(): McpServer {
   return server;
 }
 
