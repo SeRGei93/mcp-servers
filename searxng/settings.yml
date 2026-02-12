@@ -18,13 +18,7 @@ server:
 valkey:
   url: redis://redis:6379/0
 
-# Отключаем проблемные движки
+# Оставляем только Google поиск
 engines:
-  - name: wikidata
-    disabled: true
-  - name: ahmia
-    disabled: true
-  - name: torch
-    disabled: true
-  - name: yandex
-    disabled: true
+  keep_only:
+    - google
