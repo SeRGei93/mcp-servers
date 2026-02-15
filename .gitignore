@@ -12,6 +12,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Cache and storage
+.cache/
+storage/
+
 # Node/TypeScript artifacts
 web-search/node_modules/
 web-search/build/

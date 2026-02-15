@@ -1,21 +1,21 @@
 {
-  "name": "duckduckgo-search",
+  "name": "web-search",
   "version": "1.0.0",
-  "description": "HTTP MCP server for DuckDuckGo search",
+  "description": "MCP server for web search, news feeds and page fetching",
   "type": "module",
   "license": "MIT",
   "scripts": {
     "build": "tsc",
-    "start": "node build/index.js",
+    "start": "node -e \"console.error('Используйте Docker: docker compose up -d'); process.exit(1)\"",
     "watch": "tsc --watch"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "@mozilla/readability": "^0.6.0",
     "express": "^5.2.1",
     "express-mcp-handler": "^0.3.0",
     "jsdom": "^28.0.0",
     "turndown": "^7.2.2",
+    "turndown-plugin-gfm": "^1.0.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
