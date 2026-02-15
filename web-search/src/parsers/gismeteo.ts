@@ -5,25 +5,50 @@ export interface GismeteoResult {
   title: string;
 }
 
-/**
- * Удаляет script, JSON-LD, style и другой мусор из HTML.
- */
+/** Заменяет кастомные элементы Gismeteo (value в атрибуте) на текст */
+function replaceCustomElements(html: string): string {
+  return html
+    .replace(
+      /<temperature-value\s+[^>]*value="(-?\d+)"[^>]*\/?>\s*(?:<\/temperature-value>)?/gi,
+      "$1°"
+    )
+    .replace(
+      /<speed-value\s+[^>]*value="([^"]*)"[^>]*\/?>\s*(?:<\/speed-value>)?/gi,
+      "$1 м/с"
+    )
+    .replace(
+      /<precipitation-value\s+[^>]*value="([^"]*)"[^>]*\/?>\s*(?:<\/precipitation-value>)?/gi,
+      "$1 мм"
+    )
+    .replace(
+      /<snow-value\s+[^>]*value="([^"]*)"[^>]*\/?>\s*(?:<\/snow-value>)?/gi,
+      "$1 см"
+    )
+    .replace(
+      /<temperature-value\s+[^>]*\/?>\s*(?:<\/temperature-value>)?/gi,
+      ""
+    )
+    .replace(/<speed-value\s+[^>]*\/?>\s*(?:<\/speed-value>)?/gi, "")
+    .replace(/<precipitation-value\s+[^>]*\/?>\s*(?:<\/precipitation-value>)?/gi, "")
+    .replace(/<snow-value\s+[^>]*\/?>\s*(?:<\/snow-value>)?/gi, "");
+}
+
+/** Удаляет script, JSON-LD, style и рекламу */
 function stripJunk(html: string): string {
-  const dom = new JSDOM(`<div>${html}</div>`);
+  const processed = replaceCustomElements(html);
+  const dom = new JSDOM(`<div>${processed}</div>`);
   const container = dom.window.document.body.firstElementChild!;
   container
     .querySelectorAll(
       "script, [type='application/ld+json'], [type='application/json'], style"
     )
     .forEach((el) => el.remove());
-  // Удаляем контейнеры рекламы
-  container.querySelectorAll(".widget-advert-wrap, .js-widget-row-advert").forEach((el) => el.remove());
+  container
+    .querySelectorAll(".widget-advert-wrap, .js-widget-row-advert")
+    .forEach((el) => el.remove());
   return container.innerHTML;
 }
 
-/**
- * Определяет, является ли URL страницей погоды Gismeteo.
- */
 export function isGismeteoWeatherUrl(url: string): boolean {
   try {
     const u = new URL(url);
@@ -36,9 +61,7 @@ export function isGismeteoWeatherUrl(url: string): boolean {
 }
 
 /**
- * Извлекает контент страницы погоды Gismeteo:
- * - header.header — шапка с навигацией
- * - main .content-column:nth-child(1) — первая колонка основного контента (прогноз погоды)
+ * Извлекает полезные блоки: header и content-column (виджет погоды).
  */
 export function extractGismeteoContent(html: string): GismeteoResult | null {
   const dom = new JSDOM(html);
@@ -51,17 +74,9 @@ export function extractGismeteoContent(html: string): GismeteoResult | null {
   if (!header && !contentColumn) return null;
 
   const parts: string[] = [];
-  if (header) {
-    parts.push(stripJunk(header.outerHTML));
-  }
-  if (contentColumn) {
-    parts.push(stripJunk(contentColumn.outerHTML));
-  }
-
+  if (header) parts.push(stripJunk(header.outerHTML));
+  if (contentColumn) parts.push(stripJunk(contentColumn.outerHTML));
   if (parts.length === 0) return null;
 
-  return {
-    html: parts.join("\n"),
-    title,
-  };
+  return { html: parts.join("\n"), title };
 }
