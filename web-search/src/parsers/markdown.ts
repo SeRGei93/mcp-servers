@@ -1,5 +1,9 @@
 import type { NewsArticle, NewsFeedSection, NewsItem } from "./types.js";
 
+export interface NewsItemWithSource extends NewsItem {
+  source: string;
+}
+
 export function formatNewsToMarkdown(items: NewsItem[]): string {
   if (items.length === 0) return "";
 
@@ -25,6 +29,18 @@ export function formatArticleToMarkdown(article: NewsArticle): string {
   }
   parts.push("---", "", article.body);
   return parts.join("\n");
+}
+
+export function formatNewsWithSourceToMarkdown(items: NewsItemWithSource[]): string {
+  if (items.length === 0) return "";
+
+  const list = items
+    .map(
+      (item) =>
+        `- **[${item.title}](${item.url})** (${item.source})\n  ${item.description}\n  Просмотров: ${item.views} | ${item.date}`
+    )
+    .join("\n\n");
+  return `## Новости (сортировка по дате, самые свежие первыми)\n\n${list}`;
 }
 
 export function formatFeedSectionsToMarkdown(sections: NewsFeedSection[]): string {

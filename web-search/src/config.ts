@@ -38,6 +38,9 @@ export const SEARCH_NEWS_TOOL_DESCRIPTION =
 
 export const SEARCH_NEWS_DEFAULT_SITES = ["onliner.by", "tochka.by", "smartpress.by"] as const;
 
+export const SEARCH_NEWS_MAX_TOTAL = 50;
+export const SEARCH_NEWS_MIN_ONLINER = 15;
+
 export const FETCH_LIMITS = {
   timeoutMs: 30000,
 } as const;

@@ -14,7 +14,9 @@ import { performBatchWebSearch, performWebSearch } from "./search.js";
 import { fetchPageAsMarkdown } from "./fetch.js";
 import {
   searchNews,
+  mergeAndLimitNews,
   formatFeedSectionsToMarkdown,
+  formatNewsWithSourceToMarkdown,
 } from "./parsers/index.js";
 
 export function createServer(): McpServer {
@@ -214,7 +216,11 @@ export function createServer(): McpServer {
           sitesToUse,
           timeoutMs ?? FETCH_LIMITS.timeoutMs
         );
-        const markdown = formatFeedSectionsToMarkdown(sections);
+        const merged = mergeAndLimitNews(sections);
+        const markdown =
+          merged.length > 0
+            ? formatNewsWithSourceToMarkdown(merged)
+            : formatFeedSectionsToMarkdown(sections);
         return {
           content: [{ type: "text", text: markdown }],
         };

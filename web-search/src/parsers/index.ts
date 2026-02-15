@@ -5,7 +5,13 @@ import { join } from "path";
 import { fetchRawHtml } from "../fetch.js";
 import type { NewsItem, NewsParser } from "./types.js";
 import type { NewsArticle, NewsFeedSection } from "./types.js";
-import { formatArticleToMarkdown, formatNewsToMarkdown, formatFeedSectionsToMarkdown } from "./markdown.js";
+import {
+  formatArticleToMarkdown,
+  formatNewsToMarkdown,
+  formatFeedSectionsToMarkdown,
+  formatNewsWithSourceToMarkdown,
+  type NewsItemWithSource,
+} from "./markdown.js";
 import { onlinerParser } from "./onliner.js";
 import { tochkaParser } from "./tochka.js";
 import { smartpressParser } from "./smartpress.js";
@@ -13,6 +19,10 @@ import {
   isOnlinerArticleUrl,
   parseOnlinerArticle,
 } from "./onliner-article.js";
+import {
+  SEARCH_NEWS_MAX_TOTAL,
+  SEARCH_NEWS_MIN_ONLINER,
+} from "../config.js";
 
 const PARSER_REGISTRY = new Map<string, NewsParser>();
 
@@ -107,7 +117,13 @@ async function writeCache(
 }
 
 export type { NewsItem, NewsParser, NewsFeedSection, NewsArticle };
-export { formatNewsToMarkdown, formatFeedSectionsToMarkdown, formatArticleToMarkdown };
+export {
+  formatNewsToMarkdown,
+  formatFeedSectionsToMarkdown,
+  formatNewsWithSourceToMarkdown,
+  formatArticleToMarkdown,
+  type NewsItemWithSource,
+};
 export { isOnlinerArticleUrl, parseOnlinerArticle };
 export { isTochkaArticleUrl, parseTochkaArticle } from "./tochka-article.js";
 export { isSmartpressArticleUrl, parseSmartpressArticle } from "./smartpress-article.js";
@@ -172,6 +188,61 @@ function isTochkaSite(siteInput: string): boolean {
 function isSmartpressSite(siteInput: string): boolean {
   const s = siteInput.trim().toLowerCase();
   return s === "smartpress.by" || s === "https://smartpress.by";
+}
+
+const ONLINER_SOURCE = "onliner.by";
+
+/**
+ * Объединяет новости из секций, сортирует по времени (свежие первыми),
+ * применяет лимиты: макс. 50 всего, мин. 15 от onliner.by.
+ */
+export function mergeAndLimitNews(
+  sections: NewsFeedSection[],
+  maxTotal: number = SEARCH_NEWS_MAX_TOTAL,
+  minOnliner: number = SEARCH_NEWS_MIN_ONLINER
+): NewsItemWithSource[] {
+  const withSource: NewsItemWithSource[] = [];
+  for (const section of sections) {
+    if (section.error || section.fallbackMarkdown) continue;
+    for (const item of section.items) {
+      withSource.push({ ...item, source: section.source });
+    }
+  }
+
+  withSource.sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+
+  const onlinerItems = withSource.filter((i) => i.source === ONLINER_SOURCE);
+  const hasOnliner = onlinerItems.length > 0;
+
+  let result = withSource.slice(0, maxTotal);
+  const onlinerCount = result.filter((i) => i.source === ONLINER_SOURCE).length;
+
+  if (hasOnliner && onlinerCount < minOnliner) {
+    const need = Math.min(minOnliner - onlinerCount, onlinerItems.length);
+    const onlinerUrlsInResult = new Set(
+      result.filter((i) => i.source === ONLINER_SOURCE).map((i) => i.url)
+    );
+    const extraOnliner = onlinerItems.filter(
+      (i) => !onlinerUrlsInResult.has(i.url)
+    ).slice(0, need);
+
+    const nonOnliner = result.filter((i) => i.source !== ONLINER_SOURCE);
+    const toRemove = Math.min(need, nonOnliner.length);
+    const removedUrls = new Set(
+      nonOnliner
+        .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0))
+        .slice(0, toRemove)
+        .map((i) => i.url)
+    );
+
+    result = result
+      .filter((i) => !removedUrls.has(i.url))
+      .concat(extraOnliner);
+    result.sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+    result = result.slice(0, maxTotal);
+  }
+
+  return result;
 }
 
 export async function searchNews(
