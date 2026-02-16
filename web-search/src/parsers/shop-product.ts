@@ -72,11 +72,15 @@ export function isShopProductUrl(url: string): boolean {
   }
 }
 
-/** Удаляет script, JSON-LD и другой JSON из HTML (listViewJson.push, schema.org и т.д.) */
+/** Удаляет script и application/json. application/ld+json оставляем — структурированные данные */
 function stripScriptsAndJson(html: string): string {
   const dom = new JSDOM(`<div>${html}</div>`);
   const container = dom.window.document.body.firstElementChild!;
-  container.querySelectorAll("script, [type='application/ld+json'], [type='application/json']").forEach((el) => el.remove());
+  container
+    .querySelectorAll(
+      "script:not([type='application/ld+json']), [type='application/json']"
+    )
+    .forEach((el) => el.remove());
   return container.innerHTML;
 }
 

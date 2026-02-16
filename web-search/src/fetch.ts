@@ -42,6 +42,14 @@ const turndown = new TurndownService({
 });
 turndown.use(gfm);
 
+turndown.addRule("applicationLdJson", {
+  filter: (node) =>
+    node.nodeName === "SCRIPT" &&
+    node.getAttribute?.("type") === "application/ld+json",
+  replacement: (content) =>
+    content.trim() ? `\n\n\`\`\`json\n${content.trim()}\n\`\`\`\n\n` : "",
+});
+
 export async function fetchRawHtml(
   url: string,
   timeoutMs: number

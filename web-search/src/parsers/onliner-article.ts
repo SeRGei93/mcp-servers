@@ -7,6 +7,13 @@ const turndown = new TurndownService({
   codeBlockStyle: "fenced",
   bulletListMarker: "-",
 });
+turndown.addRule("applicationLdJson", {
+  filter: (node) =>
+    node.nodeName === "SCRIPT" &&
+    node.getAttribute?.("type") === "application/ld+json",
+  replacement: (content) =>
+    content.trim() ? `\n\n\`\`\`json\n${content.trim()}\n\`\`\`\n\n` : "",
+});
 
 /** Паттерн URL детальной статьи Onliner: /YYYY/MM/DD/slug */
 export const ONLINER_ARTICLE_PATH = /^\/\d{4}\/\d{2}\/\d{2}\/[^/?#]+/;

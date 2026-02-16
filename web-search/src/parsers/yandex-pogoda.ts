@@ -7,12 +7,12 @@ export interface YandexPogodaResult {
 
 /**
  * Селекторы элементов, которые нужно удалить — JSON, CSS, SVG, JS и прочий мусор.
+ * script[type="application/ld+json"] не удаляем — это структурированные данные.
  */
 const JUNK_SELECTORS = [
-  "script",
+  "script:not([type='application/ld+json'])",
   "style",
   "link[rel='stylesheet']",
-  "[type='application/ld+json']",
   "[type='application/json']",
   "noscript",
   "iframe",

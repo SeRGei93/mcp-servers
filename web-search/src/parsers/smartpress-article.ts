@@ -7,6 +7,13 @@ const turndown = new TurndownService({
   codeBlockStyle: "fenced",
   bulletListMarker: "-",
 });
+turndown.addRule("applicationLdJson", {
+  filter: (node) =>
+    node.nodeName === "SCRIPT" &&
+    node.getAttribute?.("type") === "application/ld+json",
+  replacement: (content) =>
+    content.trim() ? `\n\n\`\`\`json\n${content.trim()}\n\`\`\`\n\n` : "",
+});
 
 /** Паттерн URL детальной статьи Smartpress: /news/slug/ или /idea/category/slug/ */
 export const SMARTPRESS_ARTICLE_PATH = /^\/(news|idea)(?:\/[^/]+)+\/?/;
@@ -67,7 +74,9 @@ export function parseSmartpressArticle(html: string, url: string): NewsArticle |
   const bodyEl = container.querySelector(".art-content");
   if (bodyEl) {
     const clone = bodyEl.cloneNode(true) as Element;
-    clone.querySelectorAll("script, style, noscript").forEach((el) => el.remove());
+    clone
+      .querySelectorAll("script:not([type='application/ld+json']), style, noscript")
+      .forEach((el) => el.remove());
     for (const img of clone.querySelectorAll("img")) {
       const src = img.getAttribute("src");
       const dataSrc = img.getAttribute("data-src");

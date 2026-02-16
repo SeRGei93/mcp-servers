@@ -33,14 +33,14 @@ function replaceCustomElements(html: string): string {
     .replace(/<snow-value\s+[^>]*\/?>\s*(?:<\/snow-value>)?/gi, "");
 }
 
-/** Удаляет script, JSON-LD, style и рекламу */
+/** Удаляет script, application/json, style и рекламу. application/ld+json оставляем */
 function stripJunk(html: string): string {
   const processed = replaceCustomElements(html);
   const dom = new JSDOM(`<div>${processed}</div>`);
   const container = dom.window.document.body.firstElementChild!;
   container
     .querySelectorAll(
-      "script, [type='application/ld+json'], [type='application/json'], style"
+      "script:not([type='application/ld+json']), [type='application/json'], style"
     )
     .forEach((el) => el.remove());
   container

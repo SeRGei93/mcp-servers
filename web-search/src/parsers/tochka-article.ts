@@ -7,6 +7,13 @@ const turndown = new TurndownService({
   codeBlockStyle: "fenced",
   bulletListMarker: "-",
 });
+turndown.addRule("applicationLdJson", {
+  filter: (node) =>
+    node.nodeName === "SCRIPT" &&
+    node.getAttribute?.("type") === "application/ld+json",
+  replacement: (content) =>
+    content.trim() ? `\n\n\`\`\`json\n${content.trim()}\n\`\`\`\n\n` : "",
+});
 
 /** Паттерн URL детальной статьи Tochka: /articles/category/slug/ */
 export const TOCHKA_ARTICLE_PATH = /^\/articles\/[^/]+\/[^/?#]+\/?/;
@@ -55,7 +62,7 @@ export function parseTochkaArticle(html: string, url: string): NewsArticle | nul
   if (bodyEl) {
     const clone = bodyEl.cloneNode(true) as Element;
     const toRemove = clone.querySelectorAll(
-      "script, style, noscript, .adfox-between-paragraph, .adfox-banner, [class*='adfox']"
+      "script:not([type='application/ld+json']), style, noscript, .adfox-between-paragraph, .adfox-banner, [class*='adfox']"
     );
     toRemove.forEach((el) => el.remove());
     body = turndown.turndown(clone.innerHTML).trim();

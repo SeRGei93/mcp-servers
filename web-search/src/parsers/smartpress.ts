@@ -30,7 +30,9 @@ export function extractSmartpressNewsContent(html: string): SmartpressResult | n
   if (!list) return null;
 
   const clone = list.cloneNode(true) as Element;
-  clone.querySelectorAll("script, style, noscript").forEach((el) => el.remove());
+  clone
+    .querySelectorAll("script:not([type='application/ld+json']), style, noscript")
+    .forEach((el) => el.remove());
 
   return {
     html: clone.outerHTML,
