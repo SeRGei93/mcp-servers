@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "web-search": {
+      "url": "http://localhost:3000/mcp"
+    }
+  }
+}

@@ -1,6 +1,4 @@
 import { JSDOM } from "jsdom";
-import TurndownService from "turndown";
-import { gfm } from "turndown-plugin-gfm";
 import {
   readFetchCache,
   writeFetchCache,
@@ -35,20 +33,36 @@ import {
   extractYandexPogodaContent,
 } from "./parsers/yandex-pogoda.js";
 
-const turndown = new TurndownService({
-  headingStyle: "atx",
-  codeBlockStyle: "fenced",
-  bulletListMarker: "-",
-});
-turndown.use(gfm);
-
-turndown.addRule("applicationLdJson", {
-  filter: (node) =>
-    node.nodeName === "SCRIPT" &&
-    node.getAttribute?.("type") === "application/ld+json",
-  replacement: (content) =>
-    content.trim() ? `\n\n\`\`\`json\n${content.trim()}\n\`\`\`\n\n` : "",
-});
+/** Селекторы мусора удаляемого при универсальной очистке */
+const JUNK_SELECTORS = [
+  // Технические теги
+  "script", "style", "noscript",
+  // Медиа без текстового содержимого
+  "img", "svg", "canvas", "picture", "video", "audio",
+  // Интерактивные элементы
+  "button", "form", "input", "select", "textarea",
+  // Встраиваемый контент
+  "iframe", "embed", "object",
+  // Структурная навигация
+  "header", "footer", "nav", "aside",
+  // ARIA-роли навигационного мусора
+  "[role='navigation']", "[role='banner']", "[role='contentinfo']",
+  "[role='complementary']", "[role='search']",
+  // Скрытые элементы
+  "[aria-hidden='true']", "[hidden]",
+  // Реклама
+  "[class*='advert']", "[class*='ad-']", "[id*='ad-']",
+  "[class*='-ad']", "[id*='-ad']",
+  // Попапы, куки, соцсети
+  "[class*='banner']", "[class*='popup']", "[class*='modal']",
+  "[class*='cookie']", "[class*='social']", "[class*='share']",
+  // Боковые колонки
+  "[class*='sidebar']", "[class*='side-bar']",
+  // Рекомендации и похожие материалы
+  "[class*='recommend']", "[class*='related']", "[class*='more-']",
+  // Хлебные крошки и пагинация
+  "[class*='breadcrumb']", "[class*='pagination']",
+];
 
 export async function fetchRawHtml(
   url: string,
@@ -86,19 +100,43 @@ export async function fetchRawHtml(
   }
 }
 
-function extractMainHtml(
-  url: string,
-  html: string
-): {
-  title: string;
-  html: string;
-} {
+/** Универсальная очистка HTML от мусора, возвращает очищенный innerHTML основного контента */
+function cleanHtml(url: string, html: string): { title: string; html: string } {
   const dom = new JSDOM(html, { url });
   const doc = dom.window.document;
   const title = doc.title?.trim() || new URL(url).hostname;
-  const bodyHtml =
-    doc.body?.innerHTML ?? `<article><p>No content.</p></article>`;
-  return { title, html: bodyHtml };
+
+  // Сохраняем json-ld перед удалением скриптов
+  const jsonLdBlocks: string[] = [];
+  doc.querySelectorAll('script[type="application/ld+json"]').forEach((el) => {
+    const content = el.textContent?.trim();
+    if (content) jsonLdBlocks.push(content);
+  });
+
+  // Удаляем мусор
+  JUNK_SELECTORS.forEach((selector) => {
+    try {
+      doc.querySelectorAll(selector).forEach((el) => el.remove());
+    } catch {
+      // игнорируем невалидные селекторы
+    }
+  });
+
+  const bodyHtml = doc.body?.innerHTML ?? "<p>No content.</p>";
+
+  // Схлопываем лишние пробелы
+  const clean = bodyHtml.replace(/\s{2,}/g, " ").replace(/>\s+</g, "><").trim();
+
+  // Добавляем json-ld в конец если есть
+  const jsonLdSection = jsonLdBlocks.length > 0
+    ? "\n\n" + jsonLdBlocks.map((b) => `<script type="application/ld+json">${b}</script>`).join("\n")
+    : "";
+
+  return { title, html: clean + jsonLdSection };
+}
+
+function buildOutput(title: string, url: string, bodyHtml: string): string {
+  return `# ${title}\n\nSource: ${url}\n\n---\n\n${bodyHtml}`;
 }
 
 export async function fetchPageAsMarkdown(
@@ -108,6 +146,7 @@ export async function fetchPageAsMarkdown(
   const cached = await readFetchCache(url);
   if (cached) return cached;
 
+  // Новостные статьи — возвращают markdown (специальные парсеры)
   if (isOnlinerArticleUrl(url) || isTochkaArticleUrl(url) || isSmartpressArticleUrl(url)) {
     const article = await fetchNewsArticle(url, timeoutMs);
     if (article) {
@@ -117,54 +156,40 @@ export async function fetchPageAsMarkdown(
     }
   }
 
-  let html = await fetchRawHtml(url, timeoutMs);
+  const rawHtml = await fetchRawHtml(url, timeoutMs);
+
+  // Специализированные парсеры — возвращают уже очищенный HTML
+  let specialHtml: string | null = null;
+  let specialTitle: string | null = null;
+
   if (isCatalogOnlinerUrl(url)) {
-    const catalog = extractCatalogOnlinerContent(html);
-    if (catalog) {
-      const escapedTitle = catalog.title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      html = `<!DOCTYPE html><html><head><title>${escapedTitle}</title></head><body><div class="g-middle">${catalog.html}</div></body></html>`;
-    }
+    const r = extractCatalogOnlinerContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
   } else if (isShopCatalogUrl(url)) {
-    const shop = extractShopCatalogContent(html);
-    if (shop) {
-      const escapedTitle = shop.title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      html = `<!DOCTYPE html><html><head><title>${escapedTitle}</title></head><body><div class="PageType__BlockRightWrapper">${shop.html}</div></body></html>`;
-    }
+    const r = extractShopCatalogContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
   } else if (isShopProductUrl(url)) {
-    const shop = extractShopProductContent(html);
-    if (shop) {
-      const escapedTitle = shop.title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      html = `<!DOCTYPE html><html><head><title>${escapedTitle}</title></head><body><div class="PageModel__shopContent">${shop.html}</div></body></html>`;
-    }
+    const r = extractShopProductContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
   } else if (isSmartpressNewsListUrl(url)) {
-    const smart = extractSmartpressNewsContent(html);
-    if (smart) {
-      const escapedTitle = smart.title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      html = `<!DOCTYPE html><html><head><title>${escapedTitle}</title></head><body>${smart.html}</body></html>`;
-    }
+    const r = extractSmartpressNewsContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
   } else if (isGismeteoWeatherUrl(url)) {
-    const gism = extractGismeteoContent(html);
-    if (gism) {
-      const escapedTitle = gism.title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      html = `<!DOCTYPE html><html><head><title>${escapedTitle}</title></head><body>${gism.html}</body></html>`;
-    }
+    const r = extractGismeteoContent(rawHtml);
+    if (r) { specialHtml = r.text; specialTitle = r.title; }
   } else if (isYandexPogodaUrl(url)) {
-    const yandex = extractYandexPogodaContent(html);
-    if (yandex) {
-      const escapedTitle = yandex.title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      html = `<!DOCTYPE html><html><head><title>${escapedTitle}</title></head><body>${yandex.html}</body></html>`;
-    }
+    const r = extractYandexPogodaContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
   }
-  const extracted = extractMainHtml(url, html);
-  const markdownBody = turndown.turndown(extracted.html).trim();
 
-  const output = `# ${extracted.title}
-
-Source: ${url}
-
----
-
-${markdownBody}`;
+  let output: string;
+  if (specialHtml !== null && specialTitle !== null) {
+    output = buildOutput(specialTitle, url, specialHtml);
+  } else {
+    // Универсальная очистка для всех остальных сайтов
+    const { title, html } = cleanHtml(url, rawHtml);
+    output = buildOutput(title, url, html);
+  }
 
   await writeFetchCache(url, output);
   return output;
