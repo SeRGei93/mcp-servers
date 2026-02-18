@@ -32,6 +32,17 @@ import {
   isYandexPogodaUrl,
   extractYandexPogodaContent,
 } from "./parsers/yandex-pogoda.js";
+import {
+  isRealtArticleUrl,
+  isRealtObjectUrl,
+  extractRealtObjectContent,
+} from "./parsers/realt.js";
+import {
+  isAvByListingUrl,
+  isAvByCatalogUrl,
+  extractAvByListingContent,
+  extractAvByCatalogContent,
+} from "./parsers/av-by.js";
 
 /** Селекторы мусора удаляемого при универсальной очистке */
 const JUNK_SELECTORS = [
@@ -147,7 +158,7 @@ export async function fetchPageAsMarkdown(
   if (cached) return cached;
 
   // Новостные статьи — возвращают markdown (специальные парсеры)
-  if (isOnlinerArticleUrl(url) || isTochkaArticleUrl(url) || isSmartpressArticleUrl(url)) {
+  if (isOnlinerArticleUrl(url) || isTochkaArticleUrl(url) || isSmartpressArticleUrl(url) || isRealtArticleUrl(url)) {
     const article = await fetchNewsArticle(url, timeoutMs);
     if (article) {
       const markdown = formatArticleToMarkdown(article);
@@ -179,6 +190,15 @@ export async function fetchPageAsMarkdown(
     if (r) { specialHtml = r.text; specialTitle = r.title; }
   } else if (isYandexPogodaUrl(url)) {
     const r = extractYandexPogodaContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isRealtObjectUrl(url)) {
+    const r = extractRealtObjectContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isAvByListingUrl(url)) {
+    const r = extractAvByListingContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isAvByCatalogUrl(url)) {
+    const r = extractAvByCatalogContent(rawHtml);
     if (r) { specialHtml = r.html; specialTitle = r.title; }
   }
 

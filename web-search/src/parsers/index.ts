@@ -127,6 +127,7 @@ export {
 export { isOnlinerArticleUrl, parseOnlinerArticle };
 export { isTochkaArticleUrl, parseTochkaArticle } from "./tochka-article.js";
 export { isSmartpressArticleUrl, parseSmartpressArticle } from "./smartpress-article.js";
+export { isRealtArticleUrl, parseRealtArticle } from "./realt.js";
 
 export async function fetchNewsArticle(
   url: string,
@@ -135,10 +136,12 @@ export async function fetchNewsArticle(
   const { isOnlinerArticleUrl, parseOnlinerArticle } = await import("./onliner-article.js");
   const { isTochkaArticleUrl, parseTochkaArticle } = await import("./tochka-article.js");
   const { isSmartpressArticleUrl, parseSmartpressArticle } = await import("./smartpress-article.js");
+  const { isRealtArticleUrl, parseRealtArticle } = await import("./realt.js");
   const html = await fetchRawHtml(url, timeoutMs);
   if (isOnlinerArticleUrl(url)) return parseOnlinerArticle(html, url);
   if (isTochkaArticleUrl(url)) return parseTochkaArticle(html, url);
   if (isSmartpressArticleUrl(url)) return parseSmartpressArticle(html, url);
+  if (isRealtArticleUrl(url)) return parseRealtArticle(html, url);
   return null;
 }
 
