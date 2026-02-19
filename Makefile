@@ -35,6 +35,10 @@ rebuild:
 	docker compose build --no-cache web-search-mcp mcp-memory
 	docker compose up -d
 
+rebuild-search:
+	docker compose build --no-cache web-search-mcp
+	docker compose up -d
+
 # Очистка
 clean:
 	rm -rf web-search/build web-search/node_modules
