@@ -9,15 +9,23 @@ import {
   SEARCH_NEWS_TOOL_DESCRIPTION,
   WEB_SEARCH_BATCH_TOOL_DESCRIPTION,
   WEB_SEARCH_TOOL_DESCRIPTION,
+  AVBY_BRANDS_TOOL_DESCRIPTION,
+  AVBY_MODELS_TOOL_DESCRIPTION,
+  AVBY_FILTERS_TOOL_DESCRIPTION,
 } from "./config.js";
 import { performBatchWebSearch, performWebSearch } from "./search.js";
-import { fetchPageAsMarkdown } from "./fetch.js";
+import { fetchPageAsMarkdown, fetchRawHtml } from "./fetch.js";
 import {
   searchNews,
   mergeAndLimitNews,
   formatFeedSectionsToMarkdown,
   formatNewsWithSourceToMarkdown,
 } from "./parsers/index.js";
+import {
+  parseAvByBrands,
+  parseAvByModels,
+  parseAvByFilters,
+} from "./parsers/cars-avby.js";
 
 export function createServer(): McpServer {
   const server = new McpServer(CONFIG.server);
@@ -223,6 +231,106 @@ export function createServer(): McpServer {
             : formatFeedSectionsToMarkdown(sections);
         return {
           content: [{ type: "text", text: markdown }],
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "avby_brands",
+    {
+      description: AVBY_BRANDS_TOOL_DESCRIPTION,
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        const html = await fetchRawHtml(
+          "https://cars.av.by/",
+          FETCH_LIMITS.timeoutMs
+        );
+        const brands = parseAvByBrands(html);
+        return {
+          content: [{ type: "text", text: JSON.stringify(brands) }],
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "avby_models",
+    {
+      description: AVBY_MODELS_TOOL_DESCRIPTION,
+      inputSchema: {
+        brand: z
+          .string()
+          .min(1)
+          .describe('Brand slug, e.g. "audi", "bmw", "mercedes-benz"'),
+      },
+    },
+    async ({ brand }) => {
+      try {
+        const html = await fetchRawHtml(
+          `https://cars.av.by/${encodeURIComponent(brand)}`,
+          FETCH_LIMITS.timeoutMs
+        );
+        const models = parseAvByModels(html);
+        return {
+          content: [{ type: "text", text: JSON.stringify(models) }],
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "avby_filters",
+    {
+      description: AVBY_FILTERS_TOOL_DESCRIPTION,
+      inputSchema: {
+        brand: z
+          .string()
+          .min(1)
+          .describe('Brand slug, e.g. "audi", "bmw", "mercedes-benz"'),
+      },
+    },
+    async ({ brand }) => {
+      try {
+        const html = await fetchRawHtml(
+          `https://cars.av.by/${encodeURIComponent(brand)}`,
+          FETCH_LIMITS.timeoutMs
+        );
+        const filters = parseAvByFilters(html);
+        return {
+          content: [{ type: "text", text: JSON.stringify(filters) }],
         };
       } catch (error) {
         return {
