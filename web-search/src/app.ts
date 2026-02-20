@@ -1,7 +1,7 @@
 import express from "express";
 import { statelessHandler } from "express-mcp-handler";
 import { CONFIG } from "./config.js";
-import { createServer } from "./server.js";
+import { createServer, getAvbyBrands } from "./server.js";
 import { cleanExpiredFetchCache } from "./fetch-cache.js";
 
 const CACHE_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 минут
@@ -66,5 +66,9 @@ export async function runServer(): Promise<void> {
 
     await runCleanup();
     setInterval(runCleanup, CACHE_CLEANUP_INTERVAL_MS);
+
+    getAvbyBrands()
+      .then((brands) => console.error(`[INFO] av.by brands cache warmed: ${brands.length} brands`))
+      .catch((err) => console.error(`[WARN] av.by brands cache warmup failed:`, err));
   });
 }

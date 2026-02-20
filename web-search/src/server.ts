@@ -28,7 +28,7 @@ import {
 } from "./cars_av_by/cars-avby.js";
 import { readAvbyCache, writeAvbyCache } from "./cars_av_by/cache.js";
 
-async function getAvbyBrands(): Promise<AvByBrand[]> {
+export async function getAvbyBrands(): Promise<AvByBrand[]> {
   const cached = await readAvbyCache<AvByBrand[]>("brands");
   if (cached) return cached;
   const html = await fetchRawHtml("https://cars.av.by/", FETCH_LIMITS.timeoutMs);
