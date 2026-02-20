@@ -3,6 +3,8 @@ import { BROWSER_DOMAINS } from "./config.js";
 
 const CHROME_PATH = process.env.CHROME_PATH;
 const MAX_PAGES = 4;
+const USER_AGENT =
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 /** Простой семафор для ограничения одновременно открытых вкладок */
 let active = 0;
@@ -44,6 +46,7 @@ function getBrowser(): Promise<Browser> {
         "--disable-dev-shm-usage",
         "--disable-gpu",
         "--disable-extensions",
+        "--disable-blink-features=AutomationControlled",
       ],
     })
     .then((browser) => {
@@ -74,7 +77,14 @@ export async function fetchHtmlWithBrowser(
   const browser = await getBrowser();
   let page: Page | null = null;
   try {
-    page = await browser.newPage();
+    page = await browser.newPage({
+      userAgent: USER_AGENT,
+      viewport: { width: 1366, height: 768 },
+      locale: "ru-BY",
+    });
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => false });
+    });
     const response = await page.goto(url, {
       timeout: timeoutMs,
       waitUntil: "domcontentloaded",
