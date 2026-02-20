@@ -1,4 +1,5 @@
 import { JSDOM } from "jsdom";
+import { fetchHtmlWithBrowser, needsBrowser } from "./browser.js";
 import {
   readFetchCache,
   writeFetchCache,
@@ -100,7 +101,7 @@ export async function fetchRawHtml(
       redirect: "follow",
       signal: controller.signal,
       headers: {
-        "user-agent": "web-search-mcp/1.0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         accept:
           "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
@@ -177,7 +178,9 @@ export async function fetchPageAsMarkdown(
     }
   }
 
-  const rawHtml = await fetchRawHtml(url, timeoutMs);
+  const rawHtml = needsBrowser(url)
+    ? await fetchHtmlWithBrowser(url, timeoutMs)
+    : await fetchRawHtml(url, timeoutMs);
 
   // Специализированные парсеры — возвращают уже очищенный HTML
   let specialHtml: string | null = null;

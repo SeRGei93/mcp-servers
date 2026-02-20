@@ -1,4 +1,15 @@
 import { runServer } from "./app.js";
+import { closeBrowser } from "./browser.js";
+
+process.on("SIGTERM", async () => {
+  await closeBrowser();
+  process.exit(0);
+});
+
+process.on("SIGINT", async () => {
+  await closeBrowser();
+  process.exit(0);
+});
 
 process.on("uncaughtException", (error) => {
   console.error("[FATAL] Uncaught exception:", error);

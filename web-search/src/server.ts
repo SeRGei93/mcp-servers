@@ -12,7 +12,8 @@ import {
   AVBY_SEARCH_TOOL_DESCRIPTION,
 } from "./config.js";
 import { performBatchWebSearch, performWebSearch } from "./search.js";
-import { fetchPageAsMarkdown, fetchRawHtml } from "./fetch.js";
+import { fetchPageAsMarkdown } from "./fetch.js";
+import { fetchHtmlWithBrowser } from "./browser.js";
 import {
   searchNews,
   mergeAndLimitNews,
@@ -30,7 +31,7 @@ import { avbySearch } from "./cars_av_by/search.js";
 export async function getAvbyBrands(): Promise<AvByBrand[]> {
   const cached = await readAvbyCache<AvByBrand[]>("brands");
   if (cached) return cached;
-  const html = await fetchRawHtml("https://cars.av.by/", FETCH_LIMITS.timeoutMs);
+  const html = await fetchHtmlWithBrowser("https://cars.av.by/", FETCH_LIMITS.timeoutMs);
   const brands = parseAvByBrands(html);
   await writeAvbyCache("brands", brands);
   return brands;
@@ -358,7 +359,7 @@ export function createServer(): McpServer {
       if (cached) {
         return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(cached) }] };
       }
-      const html = await fetchRawHtml(
+      const html = await fetchHtmlWithBrowser(
         `https://cars.av.by/${encodeURIComponent(brand as string)}`,
         FETCH_LIMITS.timeoutMs,
       );

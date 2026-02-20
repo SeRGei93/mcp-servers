@@ -79,6 +79,12 @@ export const MAX_BATCH_QUERIES = Number.parseInt(
   10
 );
 
+/** Домены, для которых используется headless-браузер вместо fetch() */
+export const BROWSER_DOMAINS = new Set(
+  (process.env.BROWSER_DOMAINS ?? "cars.av.by")
+    .split(",").map((s) => s.trim()).filter(Boolean)
+);
+
 export const REGION_ALIASES: Record<string, string> = {
   global: DEFAULT_REGION,
   world: DEFAULT_REGION,

@@ -1,4 +1,5 @@
-import { fetchPageAsMarkdown, fetchRawHtml } from "../fetch.js";
+import { fetchPageAsMarkdown } from "../fetch.js";
+import { fetchHtmlWithBrowser } from "../browser.js";
 import { FETCH_LIMITS } from "../config.js";
 import { parseAvByModels, type AvByBrand, type AvByModel } from "./cars-avby.js";
 import { readAvbyCache, writeAvbyCache } from "./cache.js";
@@ -7,7 +8,7 @@ async function getModels(brand: string): Promise<AvByModel[]> {
   const cacheKey = `models_${brand}`;
   const cached = await readAvbyCache<AvByModel[]>(cacheKey);
   if (cached) return cached;
-  const html = await fetchRawHtml(
+  const html = await fetchHtmlWithBrowser(
     `https://cars.av.by/${encodeURIComponent(brand)}`,
     FETCH_LIMITS.timeoutMs,
   );

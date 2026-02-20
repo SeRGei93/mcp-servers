@@ -32,6 +32,7 @@ services:
       context: ./web-search
       dockerfile: Dockerfile
     container_name: web-search-mcp-server
+    ipc: host
     ports:
       - "${PORT:-3000}:${PORT:-3000}"
     volumes:
