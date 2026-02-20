@@ -9,8 +9,7 @@ import {
   SEARCH_NEWS_TOOL_DESCRIPTION,
   WEB_SEARCH_BATCH_TOOL_DESCRIPTION,
   WEB_SEARCH_TOOL_DESCRIPTION,
-  AVBY_BRANDS_TOOL_DESCRIPTION,
-  AVBY_FILTERS_TOOL_DESCRIPTION,
+  AVBY_SEARCH_TOOL_DESCRIPTION,
 } from "./config.js";
 import { performBatchWebSearch, performWebSearch } from "./search.js";
 import { fetchPageAsMarkdown, fetchRawHtml } from "./fetch.js";
@@ -23,10 +22,10 @@ import {
 import {
   parseAvByBrands,
   parseAvByModels,
-  parseAvByFilters,
   type AvByBrand,
 } from "./cars_av_by/cars-avby.js";
 import { readAvbyCache, writeAvbyCache } from "./cars_av_by/cache.js";
+import { avbySearch } from "./cars_av_by/search.js";
 
 export async function getAvbyBrands(): Promise<AvByBrand[]> {
   const cached = await readAvbyCache<AvByBrand[]>("brands");
@@ -257,56 +256,67 @@ export function createServer(): McpServer {
   );
 
   server.registerTool(
-    "avby_brands",
+    "avby_search",
     {
-      description: AVBY_BRANDS_TOOL_DESCRIPTION,
-      inputSchema: {},
-    },
-    async () => {
-      try {
-        const brands = await getAvbyBrands();
-        return {
-          content: [{ type: "text", text: JSON.stringify(brands) }],
-        };
-      } catch (error) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    "avby_filters",
-    {
-      description: AVBY_FILTERS_TOOL_DESCRIPTION,
+      description: AVBY_SEARCH_TOOL_DESCRIPTION,
       inputSchema: {
         brand: z
           .string()
           .min(1)
-          .describe('Brand slug, e.g. "audi", "bmw", "mercedes-benz"'),
+          .describe('Brand slug from resource list, e.g. "audi", "bmw", "mercedes-benz"'),
+        model: z
+          .string()
+          .optional()
+          .describe('Model name, e.g. "A5", "X5", "Q7". Read avby://models/{brand} resource to see available models.'),
+        year_min: z.number().int().optional().describe("Minimum year"),
+        year_max: z.number().int().optional().describe("Maximum year"),
+        price_usd_min: z.number().int().optional().describe("Minimum price in USD"),
+        price_usd_max: z.number().int().optional().describe("Maximum price in USD"),
+        mileage_km_max: z.number().int().optional().describe("Maximum mileage in km"),
+        engine_type: z
+          .string()
+          .optional()
+          .describe("Engine: petrol, diesel, hybrid, electric, petrol-lpg, petrol-cng, diesel-hybrid"),
+        transmission: z
+          .string()
+          .optional()
+          .describe("Transmission: automatic, manual, robot, cvt"),
+        body_type: z
+          .string()
+          .optional()
+          .describe("Body: sedan, wagon, hatchback, suv, coupe, minivan, cabriolet, pickup, liftback, roadster"),
+        drive_type: z
+          .string()
+          .optional()
+          .describe("Drive: fwd, rwd, awd, awd-part"),
+        condition: z
+          .string()
+          .optional()
+          .describe("Condition: used, new, damaged, parts"),
+        color: z
+          .string()
+          .optional()
+          .describe("Color: white, black, grey, silver, blue, red, green, brown, burgundy, orange, yellow, purple"),
+        region: z
+          .string()
+          .optional()
+          .describe("Region: minsk, brest, vitebsk, gomel, grodno, mogilev"),
+        sort: z
+          .number()
+          .int()
+          .optional()
+          .describe("Sort: 1=relevant, 2=cheapest, 3=expensive, 4=newest listing, 5=oldest listing, 6=newest year, 7=oldest year, 8=lowest mileage"),
+        page: z.number().int().min(1).optional().describe("Page number"),
       },
     },
-    async ({ brand }) => {
+    async ({ brand, model, year_min, year_max, price_usd_min, price_usd_max, mileage_km_max, engine_type, transmission, body_type, drive_type, condition, color, region, sort, page }) => {
       try {
-        const cacheKey = `filters_${brand}`;
-        const cached = await readAvbyCache(cacheKey);
-        if (cached) return { content: [{ type: "text", text: JSON.stringify(cached) }] };
-        const html = await fetchRawHtml(
-          `https://cars.av.by/${encodeURIComponent(brand)}`,
-          FETCH_LIMITS.timeoutMs
+        const brands = await getAvbyBrands();
+        const result = await avbySearch(
+          { brand, model, year_min, year_max, price_usd_min, price_usd_max, mileage_km_max, engine_type, transmission, body_type, drive_type, condition, color, region, sort, page },
+          brands,
         );
-        const filters = parseAvByFilters(html);
-        await writeAvbyCache(cacheKey, filters);
-        return {
-          content: [{ type: "text", text: JSON.stringify(filters) }],
-        };
+        return { content: [{ type: "text", text: result }] };
       } catch (error) {
         return {
           isError: true,
@@ -329,9 +339,7 @@ export function createServer(): McpServer {
         try {
           const brands = await getAvbyBrands();
           return {
-            resources: brands
-              .filter((b) => b.slug)
-              .map((b) => ({
+            resources: brands.map((b) => ({
                 uri: `avby://models/${b.slug}`,
                 name: b.name,
                 description: `Models for ${b.name}${b.count ? ` (${b.count} listings)` : ""}`,

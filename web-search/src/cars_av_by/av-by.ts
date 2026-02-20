@@ -29,13 +29,16 @@ const AV_BY_NON_CATALOG_PATHS = new Set([
 
 /**
  * Возвращает true для страниц каталога бренда/модели cars.av.by.
- * Примеры: /audi, /audi/a5
- * Не матчит: /filter, /search, /pages/promo, и т.д.
+ * Примеры: /audi, /audi/a5, /filter?brands[0][brand]=6
+ * Не матчит: /search, /pages/promo, и т.д.
  */
 export function isAvByCatalogUrl(url: string): boolean {
   try {
     const u = new URL(url);
     if (u.hostname !== "cars.av.by") return false;
+
+    // /filter с параметрами — страница результатов поиска
+    if (u.pathname === "/filter" || u.pathname === "/filter/") return true;
 
     // Только 1 или 2 сегмента пути, без цифровых ID
     const m = u.pathname.match(/^\/([a-z0-9_-]+)(?:\/([a-z0-9_-]+))?\/?$/);

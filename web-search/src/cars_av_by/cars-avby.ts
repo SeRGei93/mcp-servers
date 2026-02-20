@@ -3,7 +3,7 @@ import { JSDOM } from "jsdom";
 export interface AvByBrand {
   id: number;
   name: string;
-  slug?: string;
+  slug: string;
   count?: number;
 }
 
@@ -84,6 +84,24 @@ function parseCount(text: string): number {
   return isNaN(n) ? 0 : n;
 }
 
+/** Generate slug from brand name: "Alfa Romeo" → "alfa-romeo", "Lada (ВАЗ)" → "lada-vaz" */
+function generateSlug(name: string): string {
+  // Transliterate Cyrillic
+  const cyr: Record<string, string> = {
+    а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ё:"yo",ж:"zh",з:"z",и:"i",й:"y",
+    к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",
+    х:"kh",ц:"ts",ч:"ch",ш:"sh",щ:"shch",ъ:"",ы:"y",ь:"",э:"e",ю:"yu",я:"ya",
+  };
+  const result = name
+    .toLowerCase()
+    .split("")
+    .map((c) => cyr[c] ?? c)
+    .join("")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return result || name.toLowerCase();
+}
+
 export function parseAvByBrands(html: string): AvByBrand[] {
   // Collect counts and slugs from HTML catalog
   const countMap = new Map<string, { slug: string; count: number }>();
@@ -117,7 +135,8 @@ export function parseAvByBrands(html: string): AvByBrand[] {
           brands.push({
             id: opt.id,
             name: opt.label,
-            ...(htmlData && { slug: htmlData.slug, count: htmlData.count }),
+            slug: htmlData?.slug || generateSlug(opt.label),
+            ...(htmlData && { count: htmlData.count }),
           });
         }
       }

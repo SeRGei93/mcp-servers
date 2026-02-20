@@ -36,14 +36,10 @@ export const FETCH_PAGE_TOOL_DESCRIPTION =
 export const SEARCH_NEWS_TOOL_DESCRIPTION =
   "Fetches news feed from supported sites. Without site returns news from all sources (onliner.by, tochka.by, smartpress.by). Use site='onliner.by' for Onliner, site='tochka.by' for Tochka, site='smartpress.by' for Smartpress. Multiple sites: site='onliner.by;smartpress.by'. Returns markdown with title, url, date, views, description.";
 
-export const AVBY_BRANDS_TOOL_DESCRIPTION =
-  "Lists car brands available on cars.av.by marketplace. Returns JSON array of brands with id, name, and optional slug/count.";
-
-
-export const AVBY_FILTERS_TOOL_DESCRIPTION =
-  "Gets available search filters and URL building instructions for cars.av.by. " +
-  "Returns JSON with url_format (base URL, parameter patterns, sorting options, examples) and filters array. " +
-  "Use this to construct filter URLs like https://cars.av.by/filter?brands[0][brand]=6&year[min]=2015&price_usd[max]=20000";
+export const AVBY_SEARCH_TOOL_DESCRIPTION =
+  "Search car listings on cars.av.by marketplace. " +
+  "Takes brand slug (from avby_models resource list), optional model name, year range, price range in USD, sorting and page. " +
+  "Resolves all IDs internally and returns listing results.";
 
 export const SEARCH_NEWS_DEFAULT_SITES = ["onliner.by", "tochka.by", "smartpress.by"] as const;
 
