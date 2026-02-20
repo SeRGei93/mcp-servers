@@ -42,7 +42,7 @@ import {
   isAvByCatalogUrl,
   extractAvByListingContent,
   extractAvByCatalogContent,
-} from "./parsers/av-by.js";
+} from "./cars_av_by/av-by.js";
 
 /** Селекторы мусора удаляемого при универсальной очистке */
 const JUNK_SELECTORS = [
@@ -75,6 +75,16 @@ const JUNK_SELECTORS = [
   "[class*='breadcrumb']", "[class*='pagination']",
 ];
 
+/** Encode bare square brackets in the query string (some servers reject them) */
+function encodeBrackets(url: string): string {
+  const idx = url.indexOf("?");
+  if (idx === -1) return url;
+  const base = url.slice(0, idx);
+  const qs = url.slice(idx + 1).replace(/%5B/gi, "[").replace(/%5D/gi, "]");
+  const encoded = qs.replace(/\[/g, "%5B").replace(/\]/g, "%5D");
+  return `${base}?${encoded}`;
+}
+
 export async function fetchRawHtml(
   url: string,
   timeoutMs: number
@@ -85,7 +95,7 @@ export async function fetchRawHtml(
   }, timeoutMs);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(encodeBrackets(url), {
       method: "GET",
       redirect: "follow",
       signal: controller.signal,

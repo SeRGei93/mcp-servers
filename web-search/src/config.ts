@@ -39,9 +39,6 @@ export const SEARCH_NEWS_TOOL_DESCRIPTION =
 export const AVBY_BRANDS_TOOL_DESCRIPTION =
   "Lists car brands available on cars.av.by marketplace. Returns JSON array of brands with id, name, and optional slug/count.";
 
-export const AVBY_MODELS_TOOL_DESCRIPTION =
-  "Lists car models for a given brand on cars.av.by. Returns JSON array of models with id and name. " +
-  "To get generations for a specific model, use avby_filters with the same brand — generations appear in the brands property when a model is selected on the site.";
 
 export const AVBY_FILTERS_TOOL_DESCRIPTION =
   "Gets available search filters and URL building instructions for cars.av.by. " +

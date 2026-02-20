@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
   CONFIG,
@@ -10,7 +10,6 @@ import {
   WEB_SEARCH_BATCH_TOOL_DESCRIPTION,
   WEB_SEARCH_TOOL_DESCRIPTION,
   AVBY_BRANDS_TOOL_DESCRIPTION,
-  AVBY_MODELS_TOOL_DESCRIPTION,
   AVBY_FILTERS_TOOL_DESCRIPTION,
 } from "./config.js";
 import { performBatchWebSearch, performWebSearch } from "./search.js";
@@ -25,7 +24,18 @@ import {
   parseAvByBrands,
   parseAvByModels,
   parseAvByFilters,
-} from "./parsers/cars-avby.js";
+  type AvByBrand,
+} from "./cars_av_by/cars-avby.js";
+import { readAvbyCache, writeAvbyCache } from "./cars_av_by/cache.js";
+
+async function getAvbyBrands(): Promise<AvByBrand[]> {
+  const cached = await readAvbyCache<AvByBrand[]>("brands");
+  if (cached) return cached;
+  const html = await fetchRawHtml("https://cars.av.by/", FETCH_LIMITS.timeoutMs);
+  const brands = parseAvByBrands(html);
+  await writeAvbyCache("brands", brands);
+  return brands;
+}
 
 export function createServer(): McpServer {
   const server = new McpServer(CONFIG.server);
@@ -254,48 +264,9 @@ export function createServer(): McpServer {
     },
     async () => {
       try {
-        const html = await fetchRawHtml(
-          "https://cars.av.by/",
-          FETCH_LIMITS.timeoutMs
-        );
-        const brands = parseAvByBrands(html);
+        const brands = await getAvbyBrands();
         return {
           content: [{ type: "text", text: JSON.stringify(brands) }],
-        };
-      } catch (error) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    "avby_models",
-    {
-      description: AVBY_MODELS_TOOL_DESCRIPTION,
-      inputSchema: {
-        brand: z
-          .string()
-          .min(1)
-          .describe('Brand slug, e.g. "audi", "bmw", "mercedes-benz"'),
-      },
-    },
-    async ({ brand }) => {
-      try {
-        const html = await fetchRawHtml(
-          `https://cars.av.by/${encodeURIComponent(brand)}`,
-          FETCH_LIMITS.timeoutMs
-        );
-        const models = parseAvByModels(html);
-        return {
-          content: [{ type: "text", text: JSON.stringify(models) }],
         };
       } catch (error) {
         return {
@@ -324,11 +295,15 @@ export function createServer(): McpServer {
     },
     async ({ brand }) => {
       try {
+        const cacheKey = `filters_${brand}`;
+        const cached = await readAvbyCache(cacheKey);
+        if (cached) return { content: [{ type: "text", text: JSON.stringify(cached) }] };
         const html = await fetchRawHtml(
           `https://cars.av.by/${encodeURIComponent(brand)}`,
           FETCH_LIMITS.timeoutMs
         );
         const filters = parseAvByFilters(html);
+        await writeAvbyCache(cacheKey, filters);
         return {
           content: [{ type: "text", text: JSON.stringify(filters) }],
         };
@@ -344,6 +319,45 @@ export function createServer(): McpServer {
         };
       }
     }
+  );
+
+  // Resource: avby models by brand — LLM sees all brands via resources/list
+  server.registerResource(
+    "avby_models",
+    new ResourceTemplate("avby://models/{brand}", {
+      list: async () => {
+        try {
+          const brands = await getAvbyBrands();
+          return {
+            resources: brands
+              .filter((b) => b.slug)
+              .map((b) => ({
+                uri: `avby://models/${b.slug}`,
+                name: b.name,
+                description: `Models for ${b.name}${b.count ? ` (${b.count} listings)` : ""}`,
+                mimeType: "application/json",
+              })),
+          };
+        } catch {
+          return { resources: [] };
+        }
+      },
+    }),
+    { description: "Car models for a brand on cars.av.by" },
+    async (uri, { brand }) => {
+      const cacheKey = `models_${brand}`;
+      const cached = await readAvbyCache(cacheKey);
+      if (cached) {
+        return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(cached) }] };
+      }
+      const html = await fetchRawHtml(
+        `https://cars.av.by/${encodeURIComponent(brand as string)}`,
+        FETCH_LIMITS.timeoutMs,
+      );
+      const models = parseAvByModels(html);
+      await writeAvbyCache(cacheKey, models);
+      return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(models) }] };
+    },
   );
 
   return server;
