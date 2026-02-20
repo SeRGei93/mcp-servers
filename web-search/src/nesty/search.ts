@@ -42,35 +42,29 @@ export interface NestySearchParams {
   page?: number;
 }
 
+/** Fields we actually use from /api/posts */
 interface NestyPost {
   id: number;
-  title: string | null;
   headline: string | null;
-  priceByn: number;
   priceUsd: number;
-  priceCurrency: string;
   storeysCount: number;
   storey: number;
   roomsCount: number;
   areaTotal: number;
-  areaLiving: number;
   metroStationName: string | null;
   stateDistrictName: string | null;
-  townName: string;
   streetName: string | null;
   houseNumber: number | string | null;
-  buildingYear: number | null;
   publishedAt: string;
   updatedAt: string | null;
   parsedSource: string;
 }
 
-interface NestyActualizedPost extends NestyPost {
-  originalUrl: string | null;
-  contactPhones: string[] | null;
-  contactName: string | null;
+/** Fields we actually use from /api/actualized-posts */
+interface ActualizedDetail {
   description: string | null;
-  amenities: string[];
+  parsedSource: string;
+  originalUrl: string | null;
 }
 
 export interface NestyFilters {
@@ -174,7 +168,23 @@ export async function nestySearch(params: NestySearchParams): Promise<string> {
       throw new Error(`Nesty API error: ${postsResp.status} ${postsResp.statusText}`);
     }
     totalCount = postsResp.headers.get("x-total-count") ?? "?";
-    posts = (await postsResp.json()) as NestyPost[];
+    const raw = (await postsResp.json()) as Record<string, unknown>[];
+    posts = raw.map((p) => ({
+      id: p.id as number,
+      headline: (p.headline as string) ?? null,
+      priceUsd: p.priceUsd as number,
+      storeysCount: p.storeysCount as number,
+      storey: p.storey as number,
+      roomsCount: p.roomsCount as number,
+      areaTotal: p.areaTotal as number,
+      metroStationName: (p.metroStationName as string) ?? null,
+      stateDistrictName: (p.stateDistrictName as string) ?? null,
+      streetName: (p.streetName as string) ?? null,
+      houseNumber: (p.houseNumber as number | string) ?? null,
+      publishedAt: p.publishedAt as string,
+      updatedAt: (p.updatedAt as string) ?? null,
+      parsedSource: p.parsedSource as string,
+    }));
     await writePostsCache(postsUrl, { totalCount, posts });
   }
 
@@ -183,11 +193,11 @@ export async function nestySearch(params: NestySearchParams): Promise<string> {
   }
 
   // --- Детальные карточки: кэш 1 час, запрашиваем только отсутствующие ---
-  const actMap = new Map<number, NestyActualizedPost>();
+  const actMap = new Map<number, ActualizedDetail>();
   const uncachedIds: number[] = [];
 
   for (const p of posts) {
-    const cached = await readActualizedCache<NestyActualizedPost>(p.id);
+    const cached = await readActualizedCache<ActualizedDetail>(p.id);
     if (cached) {
       actMap.set(p.id, cached);
     } else {
@@ -199,10 +209,15 @@ export async function nestySearch(params: NestySearchParams): Promise<string> {
     const actUrl = `https://api.nesty.by/api/actualized-posts?ids=${uncachedIds.join(",")}`;
     const actResp = await fetch(actUrl, { headers: API_HEADERS });
     if (actResp.ok) {
-      const actPosts = (await actResp.json()) as NestyActualizedPost[];
-      for (const ap of actPosts) {
-        await writeActualizedCache(ap.id, ap);
-        actMap.set(ap.id, ap);
+      const rawAct = (await actResp.json()) as Record<string, unknown>[];
+      for (const ap of rawAct) {
+        const detail: ActualizedDetail = {
+          description: (ap.description as string) ?? null,
+          parsedSource: ap.parsedSource as string,
+          originalUrl: (ap.originalUrl as string) ?? null,
+        };
+        await writeActualizedCache(ap.id as number, detail);
+        actMap.set(ap.id as number, detail);
       }
     }
   }
