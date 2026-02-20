@@ -10,6 +10,7 @@ import {
   WEB_SEARCH_BATCH_TOOL_DESCRIPTION,
   WEB_SEARCH_TOOL_DESCRIPTION,
   AVBY_SEARCH_TOOL_DESCRIPTION,
+  NESTY_SEARCH_TOOL_DESCRIPTION,
 } from "./config.js";
 import { performBatchWebSearch, performWebSearch } from "./search.js";
 import { fetchPageAsMarkdown } from "./fetch.js";
@@ -27,6 +28,7 @@ import {
 } from "./cars_av_by/cars-avby.js";
 import { readAvbyCache, writeAvbyCache } from "./cars_av_by/cache.js";
 import { avbySearch } from "./cars_av_by/search.js";
+import { nestySearch, fetchNestyFilters, getCityNames, getMetroCities } from "./nesty/search.js";
 
 export async function getAvbyBrands(): Promise<AvByBrand[]> {
   const cached = await readAvbyCache<AvByBrand[]>("brands");
@@ -330,6 +332,120 @@ export function createServer(): McpServer {
         };
       }
     }
+  );
+
+  server.registerTool(
+    "nesty_search",
+    {
+      description: NESTY_SEARCH_TOOL_DESCRIPTION,
+      inputSchema: {
+        city: z
+          .string()
+          .min(1)
+          .describe('City slug: minsk, brest, grodno, gomel, mogilev, vitebsk'),
+        rooms: z
+          .array(z.number().int().min(1).max(5))
+          .optional()
+          .describe("Number of rooms (1, 2, 3, 4, 5)"),
+        price_min: z.number().int().optional().describe("Minimum price in USD"),
+        price_max: z.number().int().optional().describe("Maximum price in USD"),
+        area_min: z.number().optional().describe("Minimum area in m²"),
+        area_max: z.number().optional().describe("Maximum area in m²"),
+        floor_min: z.number().int().optional().describe("Minimum floor"),
+        floor_max: z.number().int().optional().describe("Maximum floor"),
+        district: z
+          .array(z.string())
+          .optional()
+          .describe("Districts (values from nesty://districts/{city} resource)"),
+        metro: z
+          .array(z.string())
+          .optional()
+          .describe("Metro stations (values from nesty://metro/{city} resource)"),
+        sort: z
+          .string()
+          .optional()
+          .describe("Sort: price_asc, price_desc, date_desc (default)"),
+        page: z.number().int().min(1).optional().describe("Page number (default 1)"),
+      },
+    },
+    async ({ city, rooms, price_min, price_max, area_min, area_max, floor_min, floor_max, district, metro, sort, page }) => {
+      try {
+        const result = await nestySearch({
+          city, rooms, price_min, price_max, area_min, area_max,
+          floor_min, floor_max, district, metro, sort, page,
+        });
+        return { content: [{ type: "text", text: result }] };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Resource: nesty districts by city
+  server.registerResource(
+    "nesty_districts",
+    new ResourceTemplate("nesty://districts/{city}", {
+      list: async () => {
+        const cities = getCityNames();
+        return {
+          resources: Object.entries(cities).map(([slug, name]) => ({
+            uri: `nesty://districts/${slug}`,
+            name: `${name} — районы`,
+            description: `Districts for rental search in ${name}`,
+            mimeType: "application/json",
+          })),
+        };
+      },
+    }),
+    { description: "Districts for apartment rental search on nesty.by" },
+    async (uri, { city }) => {
+      const filters = await fetchNestyFilters(city as string);
+      return {
+        contents: [{
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(filters.districts),
+        }],
+      };
+    },
+  );
+
+  // Resource: nesty metro stations by city
+  server.registerResource(
+    "nesty_metro",
+    new ResourceTemplate("nesty://metro/{city}", {
+      list: async () => {
+        const metroCities = getMetroCities();
+        const cities = getCityNames();
+        return {
+          resources: metroCities.map((slug) => ({
+            uri: `nesty://metro/${slug}`,
+            name: `${cities[slug]} — метро`,
+            description: `Metro stations for rental search in ${cities[slug]}`,
+            mimeType: "application/json",
+          })),
+        };
+      },
+    }),
+    { description: "Metro stations for apartment rental search on nesty.by" },
+    async (uri, { city }) => {
+      const filters = await fetchNestyFilters(city as string);
+      return {
+        contents: [{
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(filters.metroStations),
+        }],
+      };
+    },
   );
 
   // Resource: avby models by brand — LLM sees all brands via resources/list

@@ -41,6 +41,12 @@ export const AVBY_SEARCH_TOOL_DESCRIPTION =
   "Takes brand slug (from avby_models resource list), optional model name, year range, price range in USD, sorting and page. " +
   "Resolves all IDs internally and returns listing results.";
 
+export const NESTY_SEARCH_TOOL_DESCRIPTION =
+  "Search apartment rental listings on nesty.by aggregator (Belarus). " +
+  "Takes city slug (minsk, brest, grodno, gomel, mogilev, vitebsk), optional rooms, price range in USD, " +
+  "area, floor range, district (from nesty://districts/{city}), metro station (from nesty://metro/{city}), sorting and page. " +
+  "Returns listing results with links to original sources (Realt, Kufar, Onliner).";
+
 export const SEARCH_NEWS_DEFAULT_SITES = ["onliner.by", "tochka.by", "smartpress.by"] as const;
 
 export const SEARCH_NEWS_MAX_TOTAL = 50;
