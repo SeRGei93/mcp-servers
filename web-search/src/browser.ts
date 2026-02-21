@@ -6,25 +6,54 @@ const MAX_PAGES = 4;
 const USER_AGENT =
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
-/** Простой семафор для ограничения одновременно открытых вкладок */
-let active = 0;
-const queue: Array<() => void> = [];
+/** Domains limited to 1 concurrent browser tab to avoid bot detection */
+const SERIAL_DOMAINS = new Set(["www.kufar.by"]);
 
-function acquireSlot(): Promise<void> {
-  if (active < MAX_PAGES) {
-    active++;
-    return Promise.resolve();
-  }
-  return new Promise<void>((resolve) => queue.push(resolve));
+// ---------------------------------------------------------------------------
+// Simple semaphore
+// ---------------------------------------------------------------------------
+
+interface Semaphore {
+  active: number;
+  max: number;
+  queue: Array<() => void>;
 }
 
-function releaseSlot(): void {
-  const next = queue.shift();
+function makeSemaphore(max: number): Semaphore {
+  return { active: 0, max, queue: [] };
+}
+
+function acquireSem(sem: Semaphore): Promise<void> {
+  if (sem.active < sem.max) {
+    sem.active++;
+    return Promise.resolve();
+  }
+  return new Promise<void>((resolve) => sem.queue.push(resolve));
+}
+
+function releaseSem(sem: Semaphore): void {
+  const next = sem.queue.shift();
   if (next) {
     next();
   } else {
-    active--;
+    sem.active--;
   }
+}
+
+/** Global semaphore for total open tabs */
+const globalSem = makeSemaphore(MAX_PAGES);
+
+/** Per-domain semaphores for serial domains (concurrency = 1) */
+const domainSems = new Map<string, Semaphore>();
+
+function getDomainSem(hostname: string): Semaphore | null {
+  if (!SERIAL_DOMAINS.has(hostname)) return null;
+  let sem = domainSems.get(hostname);
+  if (!sem) {
+    sem = makeSemaphore(1);
+    domainSems.set(hostname, sem);
+  }
+  return sem;
 }
 
 let browserPromise: Promise<Browser> | null = null;
@@ -72,8 +101,15 @@ function getBrowser(): Promise<Browser> {
 export async function fetchHtmlWithBrowser(
   url: string,
   timeoutMs: number,
+  waitSelector?: string,
 ): Promise<string> {
-  await acquireSlot();
+  const hostname = new URL(url).hostname;
+  const dSem = getDomainSem(hostname);
+
+  // Acquire per-domain slot first (serializes requests to bot-sensitive sites)
+  if (dSem) await acquireSem(dSem);
+  await acquireSem(globalSem);
+
   const browser = await getBrowser();
   let page: Page | null = null;
   try {
@@ -99,12 +135,22 @@ export async function fetchHtmlWithBrowser(
       throw new Error(`Failed to fetch URL: HTTP ${status}`);
     }
 
+    // Wait for dynamic content if selector specified (e.g. client-side rendered listings)
+    if (waitSelector) {
+      try {
+        await page.waitForSelector(waitSelector, { timeout: 15_000 });
+      } catch {
+        // Selector didn't appear (empty results or timeout) — return current content
+      }
+    }
+
     return await page.content();
   } finally {
     if (page) {
       await page.close().catch(() => {});
     }
-    releaseSlot();
+    releaseSem(globalSem);
+    if (dSem) releaseSem(dSem);
   }
 }
 

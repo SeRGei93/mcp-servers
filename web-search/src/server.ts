@@ -10,6 +10,7 @@ import {
   WEB_SEARCH_BATCH_TOOL_DESCRIPTION,
   WEB_SEARCH_TOOL_DESCRIPTION,
   AVBY_SEARCH_TOOL_DESCRIPTION,
+  KUFAR_SEARCH_TOOL_DESCRIPTION,
   NESTY_SEARCH_TOOL_DESCRIPTION,
 } from "./config.js";
 import { performBatchWebSearch, performWebSearch } from "./search.js";
@@ -29,6 +30,7 @@ import {
 import { readAvbyCache, writeAvbyCache } from "./cars_av_by/cache.js";
 import { avbySearch } from "./cars_av_by/search.js";
 import { nestySearch, fetchNestyFilters, getCityNames, getMetroCities } from "./nesty/search.js";
+import { kufarSearch, fetchKufarCategories, fetchKufarSubcategories, getKufarTopRegions, getKufarAreas } from "./kufar/search.js";
 
 export async function getAvbyBrands(): Promise<AvByBrand[]> {
   const cached = await readAvbyCache<AvByBrand[]>("brands");
@@ -389,6 +391,56 @@ export function createServer(): McpServer {
     }
   );
 
+  server.registerTool(
+    "kufar_search",
+    {
+      description: KUFAR_SEARCH_TOOL_DESCRIPTION,
+      inputSchema: {
+        query: z
+          .string()
+          .optional()
+          .describe("Search query text"),
+        category: z
+          .string()
+          .optional()
+          .describe('Category or subcategory slug, e.g. "elektronika", "velotovary". Read kufar://categories for top-level, kufar://subcategories/{category} for subcategories.'),
+        region: z
+          .string()
+          .optional()
+          .describe('Region or city name in Russian from kufar://regions and kufar://areas/{rgn} resources, e.g. "Минск", "Брест", "Лида", "Гомельская область"'),
+        price_min: z.number().int().optional().describe("Minimum price in BYN"),
+        price_max: z.number().int().optional().describe("Maximum price in BYN"),
+        condition: z
+          .string()
+          .optional()
+          .describe("Item condition: new, used"),
+        private_only: z
+          .boolean()
+          .optional()
+          .describe("Show only private sellers (no companies)"),
+        page: z.number().int().min(1).optional().describe("Page number"),
+      },
+    },
+    async ({ query, category, region, price_min, price_max, condition, private_only, page }) => {
+      try {
+        const result = await kufarSearch({
+          query, category, region, price_min, price_max, condition, private_only, page,
+        });
+        return { content: [{ type: "text", text: result }] };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
   // Resource: nesty districts by city
   server.registerResource(
     "nesty_districts",
@@ -482,6 +534,101 @@ export function createServer(): McpServer {
       const models = parseAvByModels(html);
       await writeAvbyCache(cacheKey, models);
       return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(models) }] };
+    },
+  );
+
+  // Resource: kufar top-level categories (parsed from kufar.by/l)
+  server.registerResource(
+    "kufar_categories",
+    "kufar://categories",
+    { description: "Top-level categories on kufar.by marketplace" },
+    async (uri) => {
+      const categories = await fetchKufarCategories();
+      return {
+        contents: [{
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(categories),
+        }],
+      };
+    },
+  );
+
+  // Resource: kufar subcategories per category (parsed from category page)
+  server.registerResource(
+    "kufar_subcategories",
+    new ResourceTemplate("kufar://subcategories/{category}", {
+      list: async () => {
+        try {
+          const categories = await fetchKufarCategories();
+          return {
+            resources: categories.map((c) => ({
+              uri: `kufar://subcategories/${c.slug}`,
+              name: c.name,
+              description: `Subcategories for ${c.name}`,
+              mimeType: "application/json",
+            })),
+          };
+        } catch {
+          return { resources: [] };
+        }
+      },
+    }),
+    { description: "Subcategories for a category on kufar.by marketplace" },
+    async (uri, { category }) => {
+      const subs = await fetchKufarSubcategories(category as string);
+      return {
+        contents: [{
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(subs),
+        }],
+      };
+    },
+  );
+
+  // Resource: kufar top-level regions (oblasts + Minsk)
+  server.registerResource(
+    "kufar_regions",
+    "kufar://regions",
+    { description: "Top-level regions (oblasts) on kufar.by. Use Russian name as the region parameter. Read kufar://areas/{rgn} for cities within a region." },
+    async (uri) => {
+      return {
+        contents: [{
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(getKufarTopRegions()),
+        }],
+      };
+    },
+  );
+
+  // Resource: kufar areas (cities/districts) within a region
+  server.registerResource(
+    "kufar_areas",
+    new ResourceTemplate("kufar://areas/{rgn}", {
+      list: async () => {
+        const topRegions = getKufarTopRegions();
+        return {
+          resources: topRegions.map((r) => ({
+            uri: `kufar://areas/${r.rgn}`,
+            name: r.name,
+            description: `Cities and districts in ${r.name}`,
+            mimeType: "application/json",
+          })),
+        };
+      },
+    }),
+    { description: "Cities and districts within a region on kufar.by" },
+    async (uri, { rgn }) => {
+      const areas = getKufarAreas(rgn as string);
+      return {
+        contents: [{
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(areas),
+        }],
+      };
     },
   );
 

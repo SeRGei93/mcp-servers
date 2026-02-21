@@ -41,6 +41,12 @@ export const AVBY_SEARCH_TOOL_DESCRIPTION =
   "Takes brand slug (from avby_models resource list), optional model name, year range, price range in USD, sorting and page. " +
   "Resolves all IDs internally and returns listing results.";
 
+export const KUFAR_SEARCH_TOOL_DESCRIPTION =
+  "Search listings on kufar.by marketplace (Belarus). " +
+  "Takes optional query, category or subcategory slug (from kufar://categories and kufar://subcategories/{category}), " +
+  "region/city in Russian (from kufar://regions), price range in BYN, condition (new/used), private_only flag and page. " +
+  "Returns listing results sorted by newest first.";
+
 export const NESTY_SEARCH_TOOL_DESCRIPTION =
   "Search apartment rental listings on nesty.by aggregator (Belarus). " +
   "Takes city slug (minsk, brest, grodno, gomel, mogilev, vitebsk), optional rooms, price range in USD, " +
@@ -87,7 +93,7 @@ export const MAX_BATCH_QUERIES = Number.parseInt(
 
 /** Домены, для которых используется headless-браузер вместо fetch() */
 export const BROWSER_DOMAINS = new Set(
-  (process.env.BROWSER_DOMAINS ?? "cars.av.by")
+  (process.env.BROWSER_DOMAINS ?? "cars.av.by,www.kufar.by")
     .split(",").map((s) => s.trim()).filter(Boolean)
 );
 

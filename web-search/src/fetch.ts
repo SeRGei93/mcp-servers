@@ -44,6 +44,12 @@ import {
   extractAvByListingContent,
   extractAvByCatalogContent,
 } from "./cars_av_by/av-by.js";
+import {
+  isKufarItemUrl,
+  isKufarListingUrl,
+  extractKufarItemContent,
+  extractKufarListingContent,
+} from "./kufar/kufar-page.js";
 
 /** Селекторы мусора удаляемого при универсальной очистке */
 const JUNK_SELECTORS = [
@@ -178,8 +184,11 @@ export async function fetchPageAsMarkdown(
     }
   }
 
+  // Kufar listings are client-side rendered — wait for item links to appear
+  const browserWaitSelector = isKufarListingUrl(url) ? 'a[href*="/item/"]' : undefined;
+
   const rawHtml = needsBrowser(url)
-    ? await fetchHtmlWithBrowser(url, timeoutMs)
+    ? await fetchHtmlWithBrowser(url, timeoutMs, browserWaitSelector)
     : await fetchRawHtml(url, timeoutMs);
 
   // Специализированные парсеры — возвращают уже очищенный HTML
@@ -212,6 +221,12 @@ export async function fetchPageAsMarkdown(
     if (r) { specialHtml = r.html; specialTitle = r.title; }
   } else if (isAvByCatalogUrl(url)) {
     const r = extractAvByCatalogContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isKufarItemUrl(url)) {
+    const r = extractKufarItemContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isKufarListingUrl(url)) {
+    const r = extractKufarListingContent(rawHtml);
     if (r) { specialHtml = r.html; specialTitle = r.title; }
   }
 
