@@ -815,17 +815,11 @@ export function createServer(): McpServer {
           .string()
           .optional()
           .describe(`City: ${med103CityValues}. Default: all cities.`),
-        page: z
-          .number()
-          .int()
-          .min(1)
-          .optional()
-          .describe("Page number (default 1)"),
       },
     },
-    async ({ service, city, page }) => {
+    async ({ service, city }) => {
       try {
-        const result = await med103ServiceSearch(service, { city, page });
+        const result = await med103ServiceSearch(service, { city });
         return { content: [{ type: "text", text: result }] };
       } catch (error) {
         return {

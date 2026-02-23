@@ -123,19 +123,16 @@ function buildClinicUrl(path: string, params: { city?: string; page?: number }):
   return url;
 }
 
-function buildServiceUrl(service: string, params: { city?: string; page?: number }): string {
+function buildServiceUrl(service: string, params: { city?: string }): string {
   const city = params.city?.toLowerCase().trim();
   if (city && !MED103_CITIES[city]) {
     throw new Error(`Unknown city "${params.city}". Available: ${Object.keys(MED103_CITIES).join(", ")}`);
   }
 
-  // https://www.103.by/list/mrt/minsk/?page=2
+  // https://www.103.by/list/mrt/minsk/
   let url = `https://www.103.by/list/${service}/`;
   if (city) {
     url += `${city}/`;
-  }
-  if (params.page != null && params.page > 1) {
-    url += `?page=${params.page}`;
   }
   return url;
 }
@@ -167,7 +164,7 @@ export async function med103ClinicSearch(
 
 export async function med103ServiceSearch(
   service: string,
-  params: { city?: string; page?: number },
+  params: { city?: string },
 ): Promise<string> {
   const url = buildServiceUrl(service, params);
   return fetchPageAsMarkdown(url, FETCH_LIMITS.timeoutMs);
