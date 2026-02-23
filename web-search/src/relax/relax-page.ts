@@ -73,7 +73,7 @@ const CATALOG_JUNK = [
   ".RelinkingBlocksWrapper", ".RelinkingBlock",
   ".SectionInfo",
   ".SearchContainer", ".Search",
-  ".FastLinks",
+  ".FastLinks__toggle",
   ".UserBar",
   ".AddCompanyButton",
   ".Overlay--animation",
@@ -93,6 +93,40 @@ export function isRelaxCatalogUrl(url: string): boolean {
   }
 }
 
+function extractFastLinks(doc: Document): string {
+  const container = doc.querySelector(".FastLinks--scrollContainer");
+  if (!container) return "";
+
+  const groups: string[] = [];
+  for (const item of container.querySelectorAll(".FastLinks__item")) {
+    const btn = item.querySelector("button .Button__text");
+    const groupName = btn?.textContent?.trim();
+    const links: string[] = [];
+    for (const a of item.querySelectorAll("a.FastLinks__DropDownItem")) {
+      const text = a.textContent?.trim();
+      const href = a.getAttribute("href");
+      if (text && href) {
+        links.push(`<a href="${href}">${text}</a>`);
+      }
+    }
+    if (links.length === 0) {
+      // plain links (not dropdown)
+      const a = item.querySelector("a.FastLinks__button");
+      const text = a?.textContent?.trim();
+      const href = a?.getAttribute("href");
+      if (text && href) {
+        links.push(`<a href="${href}">${text}</a>`);
+      }
+    }
+    if (links.length > 0) {
+      const label = groupName ? `<b>${groupName}:</b> ` : "";
+      groups.push(`<p>${label}${links.join(", ")}</p>`);
+    }
+  }
+
+  return groups.length > 0 ? groups.join("") : "";
+}
+
 export function extractRelaxCatalogContent(html: string): RelaxResult | null {
   const dom = new JSDOM(html);
   const doc = dom.window.document;
@@ -108,10 +142,11 @@ export function extractRelaxCatalogContent(html: string): RelaxResult | null {
   removeEmptyLeaves(container);
   cleanAttributes(container);
 
+  const fastLinks = extractFastLinks(doc);
   const cleaned = collapse(container.innerHTML);
   if (!cleaned) return null;
 
-  return { html: cleaned, title };
+  return { html: fastLinks + cleaned, title };
 }
 
 // ---------------------------------------------------------------------------

@@ -32,11 +32,11 @@ import { avbySearch } from "./cars_av_by/search.js";
 import { nestySearch, fetchNestyFilters, getCityNames, getMetroCities } from "./nesty/search.js";
 import { kufarSearch, fetchKufarCategories, fetchKufarSubcategories, getKufarTopRegions, getKufarAreas } from "./kufar/search.js";
 import {
-  RELAX_PLACE_TYPES,
-  RELAX_AFISHA_TYPES,
   RELAX_CITIES,
   relaxPlaceSearch,
   relaxAfishaSearch,
+  getRelaxCategories,
+  getRelaxAfishaCategories,
 } from "./relax/search.js";
 import {
   MED103_DOCTOR_TYPES,
@@ -649,76 +649,111 @@ export function createServer(): McpServer {
     },
   );
 
-  // Relax.by place tools (restaurants, cafes, bars, etc.)
+  // Relax.by resources
   const relaxCityValues = Object.keys(RELAX_CITIES).join(", ");
-  for (const t of RELAX_PLACE_TYPES) {
-    server.registerTool(
-      t.tool,
-      {
-        description: t.description,
-        inputSchema: {
-          city: z
-            .string()
-            .optional()
-            .describe(`City: ${relaxCityValues}. Default: all cities.`),
-          page: z
-            .number()
-            .int()
-            .min(1)
-            .optional()
-            .describe("Page number (default 1)"),
-        },
-      },
-      async ({ city, page }) => {
-        try {
-          const result = await relaxPlaceSearch(t.path, { city, page });
-          return { content: [{ type: "text", text: result }] };
-        } catch (error) {
-          return {
-            isError: true,
-            content: [
-              {
-                type: "text",
-                text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-              },
-            ],
-          };
-        }
-      },
-    );
-  }
 
-  // Relax.by afisha tools (cinema, concerts, theatre, etc.)
-  for (const t of RELAX_AFISHA_TYPES) {
-    server.registerTool(
-      t.tool,
-      {
-        description: t.description,
-        inputSchema: {
-          city: z
-            .string()
-            .optional()
-            .describe(`City: ${relaxCityValues}. Default: all cities.`),
-        },
+  server.registerResource(
+    "relax_categories",
+    "relax://categories",
+    { description: "All place categories on www.relax.by with Russian names, paths, and groups. Use the path value as the category parameter for relax_search." },
+    async (uri) => {
+      return {
+        contents: [{
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(getRelaxCategories()),
+        }],
+      };
+    },
+  );
+
+  server.registerResource(
+    "relax_afisha_categories",
+    "relax://afisha_categories",
+    { description: "All event categories on afisha.relax.by with Russian names. Use the slug value as the category parameter for relax_afisha." },
+    async (uri) => {
+      return {
+        contents: [{
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(getRelaxAfishaCategories()),
+        }],
+      };
+    },
+  );
+
+  // Relax.by tools (2 universal tools replacing 21 hardcoded ones)
+  server.registerTool(
+    "relax_search",
+    {
+      description: `Search places/venues on www.relax.by (Belarus). Common categories: ent/restorans (рестораны), ent/cafe (кафе), ent/bar (бары), ent/clubs (клубы), ent/coffee (кофейни), ent/sushi (суши), ent/saunas (бани), tourism/hotels (гостиницы), tourism/cottages (коттеджи), health/fitness (фитнес), health/beauty (салоны красоты), active/pools (бассейны), kids/entertainment (детские развлечения). For the full list of ~80 categories read the relax://categories resource. Response includes FastLinks for subcategory refinement.`,
+      inputSchema: {
+        category: z
+          .string()
+          .min(1)
+          .describe('Category path, e.g. "ent/restorans", "tourism/hotels", "health/fitness". Also accepts full paths like "/cat/ent/restorans/" or URLs.'),
+        city: z
+          .string()
+          .optional()
+          .describe(`City: ${relaxCityValues}. Default: all cities.`),
+        page: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe("Page number (default 1)"),
       },
-      async ({ city }) => {
-        try {
-          const result = await relaxAfishaSearch(t.slug, { city });
-          return { content: [{ type: "text", text: result }] };
-        } catch (error) {
-          return {
-            isError: true,
-            content: [
-              {
-                type: "text",
-                text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-              },
-            ],
-          };
-        }
+    },
+    async ({ category, city, page }) => {
+      try {
+        const result = await relaxPlaceSearch(category, { city, page });
+        return { content: [{ type: "text", text: result }] };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "relax_afisha",
+    {
+      description: `Search events on afisha.relax.by (Belarus). Categories: kino (кино), theatre (театр), conserts (концерты), event (события), expo (выставки), quest (квесты), stand-up (стенд-ап), kids (детям), clubs (клубы), ekskursii (экскурсии), education (образование), sport (спорт), hokkej (хоккей), free (бесплатно), circus (цирк), entertainment (развлечения), kviz (квиз), festivali (фестивали). Full list: relax://afisha_categories resource.`,
+      inputSchema: {
+        category: z
+          .string()
+          .min(1)
+          .describe('Afisha category slug, e.g. "kino", "conserts", "theatre", "event", "quest", "stand-up"'),
+        city: z
+          .string()
+          .optional()
+          .describe(`City: ${relaxCityValues}. Default: all cities.`),
       },
-    );
-  }
+    },
+    async ({ category, city }) => {
+      try {
+        const result = await relaxAfishaSearch(category, { city });
+        return { content: [{ type: "text", text: result }] };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
 
   // 103.by doctor tools (one per specialty)
   const med103CityValues = Object.keys(MED103_CITIES).join(", ");
