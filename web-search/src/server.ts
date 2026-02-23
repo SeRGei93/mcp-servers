@@ -879,7 +879,7 @@ export function createServer(): McpServer {
         medicine: z
           .string()
           .min(1)
-          .describe("Medicine name or slug, e.g. ibuprofen, paracetamol, amoxicillin"),
+          .describe("Medicine name in Russian, e.g. парацетамол, ибупрофен, амоксициллин"),
       },
     },
     async ({ medicine }) => {

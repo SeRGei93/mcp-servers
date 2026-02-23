@@ -138,8 +138,8 @@ function buildServiceUrl(service: string, params: { city?: string }): string {
 }
 
 function buildPharmacyUrl(medicine: string): string {
-  // https://apteka.103.by/ibuprofen/
-  return `https://apteka.103.by/${medicine}/`;
+  // https://apteka.103.by/search/?q=парацетамол
+  return `https://apteka.103.by/search/?q=${encodeURIComponent(medicine)}`;
 }
 
 // ---------------------------------------------------------------------------
