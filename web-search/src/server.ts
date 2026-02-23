@@ -31,6 +31,13 @@ import { readAvbyCache, writeAvbyCache } from "./cars_av_by/cache.js";
 import { avbySearch } from "./cars_av_by/search.js";
 import { nestySearch, fetchNestyFilters, getCityNames, getMetroCities } from "./nesty/search.js";
 import { kufarSearch, fetchKufarCategories, fetchKufarSubcategories, getKufarTopRegions, getKufarAreas } from "./kufar/search.js";
+import {
+  RELAX_PLACE_TYPES,
+  RELAX_AFISHA_TYPES,
+  RELAX_CITIES,
+  relaxPlaceSearch,
+  relaxAfishaSearch,
+} from "./relax/search.js";
 
 export async function getAvbyBrands(): Promise<AvByBrand[]> {
   const cached = await readAvbyCache<AvByBrand[]>("brands");
@@ -631,6 +638,77 @@ export function createServer(): McpServer {
       };
     },
   );
+
+  // Relax.by place tools (restaurants, cafes, bars, etc.)
+  const relaxCityValues = Object.keys(RELAX_CITIES).join(", ");
+  for (const t of RELAX_PLACE_TYPES) {
+    server.registerTool(
+      t.tool,
+      {
+        description: t.description,
+        inputSchema: {
+          city: z
+            .string()
+            .optional()
+            .describe(`City: ${relaxCityValues}. Default: all cities.`),
+          page: z
+            .number()
+            .int()
+            .min(1)
+            .optional()
+            .describe("Page number (default 1)"),
+        },
+      },
+      async ({ city, page }) => {
+        try {
+          const result = await relaxPlaceSearch(t.path, { city, page });
+          return { content: [{ type: "text", text: result }] };
+        } catch (error) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+              },
+            ],
+          };
+        }
+      },
+    );
+  }
+
+  // Relax.by afisha tools (cinema, concerts, theatre, etc.)
+  for (const t of RELAX_AFISHA_TYPES) {
+    server.registerTool(
+      t.tool,
+      {
+        description: t.description,
+        inputSchema: {
+          city: z
+            .string()
+            .optional()
+            .describe(`City: ${relaxCityValues}. Default: all cities.`),
+        },
+      },
+      async ({ city }) => {
+        try {
+          const result = await relaxAfishaSearch(t.slug, { city });
+          return { content: [{ type: "text", text: result }] };
+        } catch (error) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+              },
+            ],
+          };
+        }
+      },
+    );
+  }
 
   return server;
 }

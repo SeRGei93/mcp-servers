@@ -50,6 +50,14 @@ import {
   extractKufarItemContent,
   extractKufarListingContent,
 } from "./kufar/kufar-page.js";
+import {
+  isRelaxEstablishmentUrl,
+  extractRelaxEstablishmentContent,
+  isRelaxAfishaUrl,
+  extractRelaxAfishaContent,
+  isRelaxCatalogUrl,
+  extractRelaxCatalogContent,
+} from "./relax/relax-page.js";
 
 /** Селекторы мусора удаляемого при универсальной очистке */
 const JUNK_SELECTORS = [
@@ -227,6 +235,15 @@ export async function fetchPageAsMarkdown(
     if (r) { specialHtml = r.html; specialTitle = r.title; }
   } else if (isKufarListingUrl(url)) {
     const r = extractKufarListingContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isRelaxEstablishmentUrl(url)) {
+    const r = extractRelaxEstablishmentContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isRelaxAfishaUrl(url)) {
+    const r = extractRelaxAfishaContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isRelaxCatalogUrl(url)) {
+    const r = extractRelaxCatalogContent(rawHtml);
     if (r) { specialHtml = r.html; specialTitle = r.title; }
   }
 
