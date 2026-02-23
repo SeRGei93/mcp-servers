@@ -58,6 +58,18 @@ import {
   isRelaxCatalogUrl,
   extractRelaxCatalogContent,
 } from "./relax/relax-page.js";
+import {
+  isMed103AptekaUrl,
+  extractMed103AptekaContent,
+  isMed103DoctorProfileUrl,
+  extractMed103DoctorProfileContent,
+  isMed103DoctorListUrl,
+  extractMed103DoctorListContent,
+  isMed103CatalogUrl,
+  extractMed103CatalogContent,
+  isMed103ClinicSubdomainUrl,
+  extractMed103ClinicSubdomainContent,
+} from "./103by/103by-page.js";
 
 /** Селекторы мусора удаляемого при универсальной очистке */
 const JUNK_SELECTORS = [
@@ -244,6 +256,21 @@ export async function fetchPageAsMarkdown(
     if (r) { specialHtml = r.html; specialTitle = r.title; }
   } else if (isRelaxCatalogUrl(url)) {
     const r = extractRelaxCatalogContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isMed103AptekaUrl(url)) {
+    const r = extractMed103AptekaContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isMed103DoctorProfileUrl(url)) {
+    const r = extractMed103DoctorProfileContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isMed103DoctorListUrl(url)) {
+    const r = extractMed103DoctorListContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isMed103CatalogUrl(url)) {
+    const r = extractMed103CatalogContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isMed103ClinicSubdomainUrl(url)) {
+    const r = extractMed103ClinicSubdomainContent(rawHtml);
     if (r) { specialHtml = r.html; specialTitle = r.title; }
   }
 

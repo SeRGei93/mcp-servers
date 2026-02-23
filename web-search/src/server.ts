@@ -38,6 +38,16 @@ import {
   relaxPlaceSearch,
   relaxAfishaSearch,
 } from "./relax/search.js";
+import {
+  MED103_DOCTOR_TYPES,
+  MED103_CLINIC_TYPES,
+  MED103_CITIES,
+  MED103_SORT_ORDERS,
+  med103DoctorSearch,
+  med103ClinicSearch,
+  med103ServiceSearch,
+  med103PharmacySearch,
+} from "./103by/search.js";
 
 export async function getAvbyBrands(): Promise<AvByBrand[]> {
   const cached = await readAvbyCache<AvByBrand[]>("brands");
@@ -709,6 +719,157 @@ export function createServer(): McpServer {
       },
     );
   }
+
+  // 103.by doctor tools (one per specialty)
+  const med103CityValues = Object.keys(MED103_CITIES).join(", ");
+  for (const t of MED103_DOCTOR_TYPES) {
+    server.registerTool(
+      t.tool,
+      {
+        description: t.description,
+        inputSchema: {
+          city: z
+            .string()
+            .optional()
+            .describe(`City: ${med103CityValues}. Default: all cities.`),
+          sort_order: z
+            .enum(MED103_SORT_ORDERS)
+            .optional()
+            .describe("Sort: reviews, rating, prices, work_experience. Default: relevance."),
+          page: z
+            .number()
+            .int()
+            .min(1)
+            .optional()
+            .describe("Page number (default 1)"),
+        },
+      },
+      async ({ city, sort_order, page }) => {
+        try {
+          const result = await med103DoctorSearch(t.specialty, { city, sort_order, page });
+          return { content: [{ type: "text", text: result }] };
+        } catch (error) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+              },
+            ],
+          };
+        }
+      },
+    );
+  }
+
+  // 103.by clinic tools (med centers, dental, hospitals, polyclinics)
+  for (const t of MED103_CLINIC_TYPES) {
+    server.registerTool(
+      t.tool,
+      {
+        description: t.description,
+        inputSchema: {
+          city: z
+            .string()
+            .optional()
+            .describe(`City: ${med103CityValues}. Default: all cities.`),
+          page: z
+            .number()
+            .int()
+            .min(1)
+            .optional()
+            .describe("Page number (default 1)"),
+        },
+      },
+      async ({ city, page }) => {
+        try {
+          const result = await med103ClinicSearch(t.path, { city, page });
+          return { content: [{ type: "text", text: result }] };
+        } catch (error) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+              },
+            ],
+          };
+        }
+      },
+    );
+  }
+
+  // 103.by services tool (MRT, CT, UZI, etc.)
+  server.registerTool(
+    "103by_services",
+    {
+      description: "Search medical services on 103.by (Belarus). Returns list of clinics offering the service with prices. Requires city. Use full service slugs from the site, e.g. mrt, kt, uzi-pri-beremennosti, analiz-krovi, koloskopiya, gastroskopiya, mammografiya, ekg, ftorografiya.",
+      inputSchema: {
+        service: z
+          .string()
+          .min(1)
+          .describe("Service slug, e.g. mrt, kt, uzi-pri-beremennosti, analiz-krovi, mammografiya, ekg"),
+        city: z
+          .string()
+          .optional()
+          .describe(`City: ${med103CityValues}. Default: all cities.`),
+        page: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe("Page number (default 1)"),
+      },
+    },
+    async ({ service, city, page }) => {
+      try {
+        const result = await med103ServiceSearch(service, { city, page });
+        return { content: [{ type: "text", text: result }] };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  // 103.by pharmacy tool
+  server.registerTool(
+    "103by_pharmacy",
+    {
+      description: "Search medicine prices in pharmacies on apteka.103.by (Belarus). Returns list of pharmacies with prices for the specified medicine.",
+      inputSchema: {
+        medicine: z
+          .string()
+          .min(1)
+          .describe("Medicine name or slug, e.g. ibuprofen, paracetamol, amoxicillin"),
+      },
+    },
+    async ({ medicine }) => {
+      try {
+        const result = await med103PharmacySearch(medicine);
+        return { content: [{ type: "text", text: result }] };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
 
   return server;
 }
