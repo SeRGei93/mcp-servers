@@ -37,7 +37,9 @@ export interface NestySearchParams {
   floor_min?: number;
   floor_max?: number;
   district?: string[];
+  sub_district?: string[];
   metro?: string[];
+  sources?: string[];
   sort?: string;
   page?: number;
 }
@@ -75,6 +77,33 @@ export interface NestyFilters {
 interface PostsCacheData {
   totalCount: string;
   posts: NestyPost[];
+}
+
+export async function fetchNestySubDistricts(city: string, district: string): Promise<string[]> {
+  const cityName = CITIES[city];
+  if (!cityName) {
+    throw new Error(`Unknown city "${city}". Available: ${Object.keys(CITIES).join(", ")}`);
+  }
+
+  const cacheKey = `${city}_sub_${district}`;
+  const cached = await readFiltersCache<string[]>(cacheKey);
+  if (cached) return cached;
+
+  const url = `https://api.nesty.by/api/posts/filters/${encodeURIComponent(cityName)}/districts`;
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { ...API_HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ districts: [district] }),
+  });
+  if (!resp.ok) {
+    throw new Error(`Nesty sub-districts API error: ${resp.status} ${resp.statusText}`);
+  }
+
+  const data = await resp.json() as { subDistricts?: string[] };
+  const subDistricts = data.subDistricts ?? [];
+
+  await writeFiltersCache(cacheKey, subDistricts);
+  return subDistricts;
 }
 
 export async function fetchNestyFilters(city: string): Promise<NestyFilters> {
@@ -150,6 +179,12 @@ export async function nestySearch(params: NestySearchParams): Promise<string> {
   }
   if (params.metro?.length) {
     extraParams += params.metro.map((m) => `&metro[]=${encodeURIComponent(m)}`).join("");
+  }
+  if (params.sub_district?.length) {
+    extraParams += params.sub_district.map((s) => `&subDistrict[]=${encodeURIComponent(s)}`).join("");
+  }
+  if (params.sources?.length) {
+    extraParams += params.sources.map((s) => `&sources[]=${encodeURIComponent(s)}`).join("");
   }
 
   const postsUrl = `https://api.nesty.by/api/posts?${qp.toString()}${extraParams}`;

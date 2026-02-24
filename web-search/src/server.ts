@@ -29,7 +29,7 @@ import {
 } from "./cars_av_by/cars-avby.js";
 import { readAvbyCache, writeAvbyCache } from "./cars_av_by/cache.js";
 import { avbySearch } from "./cars_av_by/search.js";
-import { nestySearch, fetchNestyFilters, getCityNames, getMetroCities } from "./nesty/search.js";
+import { nestySearch, fetchNestyFilters, fetchNestySubDistricts, getCityNames, getMetroCities } from "./nesty/search.js";
 import { kufarSearch, fetchKufarCategories, fetchKufarSubcategories, getKufarTopRegions, getKufarAreas } from "./kufar/search.js";
 import {
   RELAX_CITIES,
@@ -376,10 +376,18 @@ export function createServer(): McpServer {
           .array(z.string())
           .optional()
           .describe("Districts (values from nesty://districts/{city} resource)"),
+        sub_district: z
+          .array(z.string())
+          .optional()
+          .describe("Sub-districts (values from nesty://subdistricts/{city}/{district} resource)"),
         metro: z
           .array(z.string())
           .optional()
           .describe("Metro stations (values from nesty://metro/{city} resource)"),
+        sources: z
+          .array(z.string())
+          .optional()
+          .describe("Sources: Realt, Kufar, Onliner, Domovita, Hata, Neagent"),
         sort: z
           .string()
           .optional()
@@ -387,11 +395,11 @@ export function createServer(): McpServer {
         page: z.number().int().min(1).optional().describe("Page number (default 1)"),
       },
     },
-    async ({ city, rooms, price_min, price_max, area_min, area_max, floor_min, floor_max, district, metro, sort, page }) => {
+    async ({ city, rooms, price_min, price_max, area_min, area_max, floor_min, floor_max, district, sub_district, metro, sources, sort, page }) => {
       try {
         const result = await nestySearch({
           city, rooms, price_min, price_max, area_min, area_max,
-          floor_min, floor_max, district, metro, sort, page,
+          floor_min, floor_max, district, sub_district, metro, sources, sort, page,
         });
         return { content: [{ type: "text", text: result }] };
       } catch (error) {
@@ -512,6 +520,25 @@ export function createServer(): McpServer {
           uri: uri.href,
           mimeType: "application/json",
           text: JSON.stringify(filters.metroStations),
+        }],
+      };
+    },
+  );
+
+  // Resource: nesty sub-districts by city and district
+  server.registerResource(
+    "nesty_subdistricts",
+    new ResourceTemplate("nesty://subdistricts/{city}/{district}", {
+      list: async () => ({ resources: [] }),
+    }),
+    { description: "Sub-districts for a district in a city on nesty.by. First select a district from nesty://districts/{city}, then load sub-districts." },
+    async (uri, { city, district }) => {
+      const subDistricts = await fetchNestySubDistricts(city as string, decodeURIComponent(district as string));
+      return {
+        contents: [{
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(subDistricts),
         }],
       };
     },

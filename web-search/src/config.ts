@@ -50,8 +50,9 @@ export const KUFAR_SEARCH_TOOL_DESCRIPTION =
 export const NESTY_SEARCH_TOOL_DESCRIPTION =
   "Search apartment rental listings on nesty.by aggregator (Belarus). " +
   "Takes city slug (minsk, brest, grodno, gomel, mogilev, vitebsk), optional rooms, price range in USD, " +
-  "area, floor range, district (from nesty://districts/{city}), metro station (from nesty://metro/{city}), sorting and page. " +
-  "Returns listing results with links to original sources (Realt, Kufar, Onliner).";
+  "area, floor range, district (from nesty://districts/{city}), sub-district (from nesty://subdistricts/{city}/{district}), " +
+  "metro station (from nesty://metro/{city}), sources (Realt, Kufar, Onliner, Domovita, Hata, Neagent), sorting and page. " +
+  "Returns listing results with links to original sources.";
 
 export const SEARCH_NEWS_DEFAULT_SITES = ["onliner.by", "tochka.by", "smartpress.by"] as const;
 
