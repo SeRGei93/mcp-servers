@@ -211,7 +211,9 @@ export function extractKufarListingContent(html: string): KufarResult | null {
     items.push(line);
   }
 
-  if (items.length === 0) return null;
+  if (items.length === 0) {
+    return { html: "Найдено 0 результатов", title: title || "Kufar — поиск" };
+  }
 
   const resultText = (heading ? `${heading}\n\n` : "") + items.join("\n\n");
   return { html: resultText, title };
