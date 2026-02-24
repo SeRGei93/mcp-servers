@@ -48,6 +48,7 @@ import {
   med103ServiceSearch,
   med103PharmacySearch,
 } from "./103by/search.js";
+import { CITIES, PERIODS, fetchWeather } from "./weather/weather.js";
 
 export async function getAvbyBrands(): Promise<AvByBrand[]> {
   const cached = await readAvbyCache<AvByBrand[]>("brands");
@@ -920,6 +921,35 @@ export function createServer(): McpServer {
           ],
         };
       }
+    },
+  );
+
+  // Resource: weather forecast by city and period (gismeteo.by)
+  const periodNames = Object.entries(PERIODS).map(([k, v]) => `${k} (${v.name})`).join(", ");
+  server.registerResource(
+    "weather_forecast",
+    new ResourceTemplate("weather://forecast/{city}/{period}", {
+      list: async () => ({
+        resources: Object.entries(CITIES).flatMap(([slug, city]) =>
+          Object.entries(PERIODS).map(([periodSlug, period]) => ({
+            uri: `weather://forecast/${slug}/${periodSlug}`,
+            name: `${city.name} — ${period.name}`,
+            description: `Weather forecast for ${city.name}: ${period.name}`,
+            mimeType: "text/html",
+          })),
+        ),
+      }),
+    }),
+    { description: `Weather forecast for Belarusian cities from gismeteo.by. Periods: ${periodNames}.` },
+    async (uri, { city, period }) => {
+      const data = await fetchWeather(city as string, period as string);
+      return {
+        contents: [{
+          uri: uri.href,
+          mimeType: "text/html",
+          text: data,
+        }],
+      };
     },
   );
 
