@@ -127,17 +127,17 @@ export async function nestySearch(params: NestySearchParams): Promise<string> {
   qp.set("limit", String(PAGE_LIMIT));
 
   if (params.sort) {
-    qp.set("sortType", params.sort);
+    qp.set("sortBy", params.sort);
   } else {
-    qp.set("sortType", "date_desc");
+    qp.set("sortBy", "date_desc");
   }
 
-  if (params.price_min != null) qp.set("priceMin", String(params.price_min));
-  if (params.price_max != null) qp.set("priceMax", String(params.price_max));
-  if (params.area_min != null) qp.set("areaMin", String(params.area_min));
-  if (params.area_max != null) qp.set("areaMax", String(params.area_max));
-  if (params.floor_min != null) qp.set("floorMin", String(params.floor_min));
-  if (params.floor_max != null) qp.set("floorMax", String(params.floor_max));
+  if (params.price_min != null) qp.set("priceFrom", String(params.price_min));
+  if (params.price_max != null) qp.set("priceTo", String(params.price_max));
+  if (params.area_min != null) qp.set("areaFrom", String(params.area_min));
+  if (params.area_max != null) qp.set("areaTo", String(params.area_max));
+  if (params.floor_min != null) qp.set("floorFrom", String(params.floor_min));
+  if (params.floor_max != null) qp.set("floorTo", String(params.floor_max));
 
   // Array params need [] suffix — URLSearchParams doesn't support duplicates with brackets,
   // so we build them manually
