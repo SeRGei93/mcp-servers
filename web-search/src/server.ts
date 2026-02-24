@@ -388,18 +388,14 @@ export function createServer(): McpServer {
           .array(z.string())
           .optional()
           .describe("Sources: Realt, Kufar, Onliner, Domovita, Hata, Neagent"),
-        sort: z
-          .string()
-          .optional()
-          .describe("Sort: price_asc, price_desc, date_desc (default)"),
         page: z.number().int().min(1).optional().describe("Page number (default 1)"),
       },
     },
-    async ({ city, rooms, price_min, price_max, area_min, area_max, floor_min, floor_max, district, sub_district, metro, sources, sort, page }) => {
+    async ({ city, rooms, price_min, price_max, area_min, area_max, floor_min, floor_max, district, sub_district, metro, sources, page }) => {
       try {
         const result = await nestySearch({
           city, rooms, price_min, price_max, area_min, area_max,
-          floor_min, floor_max, district, sub_district, metro, sources, sort, page,
+          floor_min, floor_max, district, sub_district, metro, sources, page,
         });
         return { content: [{ type: "text", text: result }] };
       } catch (error) {

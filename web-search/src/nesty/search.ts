@@ -40,7 +40,6 @@ export interface NestySearchParams {
   sub_district?: string[];
   metro?: string[];
   sources?: string[];
-  sort?: string;
   page?: number;
 }
 
@@ -155,11 +154,7 @@ export async function nestySearch(params: NestySearchParams): Promise<string> {
   qp.set("page", String(params.page ?? 1));
   qp.set("limit", String(PAGE_LIMIT));
 
-  if (params.sort) {
-    qp.set("sortBy", params.sort);
-  } else {
-    qp.set("sortBy", "date_desc");
-  }
+  qp.set("sortBy", "date_desc");
 
   if (params.price_min != null) qp.set("priceFrom", String(params.price_min));
   if (params.price_max != null) qp.set("priceTo", String(params.price_max));
