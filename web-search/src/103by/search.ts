@@ -69,6 +69,7 @@ export const MED103_CLINIC_TYPES: Med103ClinicType[] = [
   { tool: "103by_stomatologii", path: "/cat/med/stomatologii/", description: "Search dental clinics on 103.by (Belarus). Returns list of dental clinics with names, addresses, ratings. Optional city and page." },
   { tool: "103by_bolnitsy", path: "/cat/med/bolnitsy/", description: "Search hospitals on 103.by (Belarus). Returns list of hospitals with names, addresses, ratings. Optional city and page." },
   { tool: "103by_polikliniki", path: "/cat/med/polikliniki/", description: "Search polyclinics on 103.by (Belarus). Returns list of polyclinics with names, addresses, ratings. Optional city and page." },
+  { tool: "103by_vetkliniki", path: "/cat/vet/vetkliniki/", description: "Search veterinary clinics on 103.by (Belarus). Returns list of vet clinics with names, addresses, ratings, prices. Optional city and page." },
 ];
 
 // ---------------------------------------------------------------------------
