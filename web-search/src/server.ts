@@ -924,6 +924,22 @@ export function createServer(): McpServer {
     },
   );
 
+  // Resource: weather cities list
+  server.registerResource(
+    "weather_cities",
+    "weather://cities",
+    { description: "List of Belarusian cities available for weather forecast. Use city slug as {city} in weather://forecast/{city}/{period}." },
+    async (uri) => ({
+      contents: [{
+        uri: uri.href,
+        mimeType: "application/json",
+        text: JSON.stringify(
+          Object.entries(CITIES).map(([slug, city]) => ({ slug, name: city.name })),
+        ),
+      }],
+    }),
+  );
+
   // Resource: weather forecast by city and period (gismeteo.by)
   const periodNames = Object.entries(PERIODS).map(([k, v]) => `${k} (${v.name})`).join(", ");
   server.registerResource(

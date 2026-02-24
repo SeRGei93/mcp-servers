@@ -1,3 +1,6 @@
+import { mkdir, readFile, writeFile } from "fs/promises";
+import { existsSync } from "fs";
+import { join, dirname } from "path";
 import { extractGismeteoContent } from "../parsers/gismeteo.js";
 import { fetchHtmlWithBrowser } from "../browser.js";
 import { FETCH_LIMITS } from "../config.js";
@@ -49,14 +52,41 @@ export const PERIODS: Record<string, Period> = {
 };
 
 const BASE_URL = "https://www.gismeteo.by";
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const CACHE_DIR =
+  process.env.WEATHER_CACHE_DIR ??
+  (process.env.FETCH_CACHE_DIR
+    ? join(dirname(process.env.FETCH_CACHE_DIR), "weather")
+    : join(process.cwd(), ".cache", "weather"));
 
-interface CacheEntry {
-  data: string;
-  expiresAt: number;
+async function ensureCacheDir(): Promise<void> {
+  if (!existsSync(CACHE_DIR)) {
+    await mkdir(CACHE_DIR, { recursive: true });
+  }
 }
 
-const cache = new Map<string, CacheEntry>();
+function getCacheFilePath(slug: string, periodSlug: string): string {
+  return join(CACHE_DIR, `${slug}_${periodSlug}.json`);
+}
+
+async function readCache(slug: string, periodSlug: string): Promise<string | null> {
+  const filePath = getCacheFilePath(slug, periodSlug);
+  if (!existsSync(filePath)) return null;
+  try {
+    const raw = await readFile(filePath, "utf-8");
+    const { expiresAt, data } = JSON.parse(raw) as { expiresAt: number; data: string };
+    if (Date.now() < expiresAt) return data;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCache(slug: string, periodSlug: string, data: string): Promise<void> {
+  await ensureCacheDir();
+  const filePath = getCacheFilePath(slug, periodSlug);
+  await writeFile(filePath, JSON.stringify({ expiresAt: Date.now() + CACHE_TTL_MS, data }), "utf-8");
+}
 
 export async function fetchWeather(slug: string, periodSlug: string): Promise<string> {
   const city = CITIES[slug];
@@ -69,11 +99,8 @@ export async function fetchWeather(slug: string, periodSlug: string): Promise<st
     throw new Error(`Unknown period: ${periodSlug}. Available: ${Object.keys(PERIODS).join(", ")}`);
   }
 
-  const cacheKey = `${slug}:${periodSlug}`;
-  const cached = cache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.data;
-  }
+  const cached = await readCache(slug, periodSlug);
+  if (cached) return cached;
 
   const url = `${BASE_URL}${city.path}${period.suffix}`;
   const html = await fetchHtmlWithBrowser(url, FETCH_LIMITS.timeoutMs);
@@ -84,7 +111,7 @@ export async function fetchWeather(slug: string, periodSlug: string): Promise<st
   }
 
   const data = `# ${result.title}\n\n${result.text}`;
-  cache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+  await writeCache(slug, periodSlug, data);
 
   return data;
 }
