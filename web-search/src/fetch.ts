@@ -51,6 +51,12 @@ import {
   extractKufarListingContent,
 } from "./kufar/kufar-page.js";
 import {
+  isRabotaByVacancyUrl,
+  isRabotaBySearchUrl,
+  extractRabotaByVacancyContent,
+  extractRabotaBySearchContent,
+} from "./rabota_by/rabota-page.js";
+import {
   isRelaxEstablishmentUrl,
   extractRelaxEstablishmentContent,
   isRelaxAfishaUrl,
@@ -247,6 +253,12 @@ export async function fetchPageAsMarkdown(
     if (r) { specialHtml = r.html; specialTitle = r.title; }
   } else if (isKufarListingUrl(url)) {
     const r = extractKufarListingContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isRabotaByVacancyUrl(url)) {
+    const r = extractRabotaByVacancyContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isRabotaBySearchUrl(url)) {
+    const r = extractRabotaBySearchContent(rawHtml);
     if (r) { specialHtml = r.html; specialTitle = r.title; }
   } else if (isRelaxEstablishmentUrl(url)) {
     const r = extractRelaxEstablishmentContent(rawHtml);

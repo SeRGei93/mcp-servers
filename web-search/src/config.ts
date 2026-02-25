@@ -47,6 +47,12 @@ export const KUFAR_SEARCH_TOOL_DESCRIPTION =
   "region/city in Russian (from kufar://regions), price range in BYN, condition (new/used), private_only flag and page. " +
   "Returns listing results sorted by newest first.";
 
+export const RABOTA_SEARCH_TOOL_DESCRIPTION =
+  "Search job vacancies on rabota.by (Belarus). " +
+  "Takes search text query (required), optional city (minsk, brest, vitebsk, gomel, grodno, mogilev), " +
+  "experience level, education, schedule, employment type, minimum salary in BYR, " +
+  "salary filter flag, sorting and page. Returns vacancy listings.";
+
 export const NESTY_SEARCH_TOOL_DESCRIPTION =
   "Search apartment rental listings on nesty.by aggregator (Belarus). " +
   "Takes city slug (minsk, brest, grodno, gomel, mogilev, vitebsk), optional rooms, price range in USD, " +

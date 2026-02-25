@@ -12,6 +12,7 @@ import {
   AVBY_SEARCH_TOOL_DESCRIPTION,
   KUFAR_SEARCH_TOOL_DESCRIPTION,
   NESTY_SEARCH_TOOL_DESCRIPTION,
+  RABOTA_SEARCH_TOOL_DESCRIPTION,
 } from "./config.js";
 import { performBatchWebSearch, performWebSearch } from "./search.js";
 import { fetchPageAsMarkdown } from "./fetch.js";
@@ -31,6 +32,7 @@ import { readAvbyCache, writeAvbyCache } from "./cars_av_by/cache.js";
 import { avbySearch } from "./cars_av_by/search.js";
 import { nestySearch, fetchNestyFilters, fetchNestySubDistricts, getCityNames, getMetroCities } from "./nesty/search.js";
 import { kufarSearch, fetchKufarCategories, fetchKufarSubcategories, getKufarTopRegions, getKufarAreas } from "./kufar/search.js";
+import { rabotaSearch } from "./rabota_by/search.js";
 import {
   RELAX_CITIES,
   relaxPlaceSearch,
@@ -447,6 +449,76 @@ export function createServer(): McpServer {
       try {
         const result = await kufarSearch({
           query, category, region, price_min, price_max, condition, private_only, page,
+        });
+        return { content: [{ type: "text", text: result }] };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "rabota_search",
+    {
+      description: RABOTA_SEARCH_TOOL_DESCRIPTION,
+      inputSchema: {
+        text: z
+          .string()
+          .min(1)
+          .describe("Search query text, e.g. job title, skills, company name"),
+        area: z
+          .string()
+          .optional()
+          .describe("City: minsk, brest, vitebsk, gomel, grodno, mogilev. Default: all Belarus."),
+        experience: z
+          .string()
+          .optional()
+          .describe("Experience: noExperience, between1And3, between3And6, moreThan6"),
+        education: z
+          .string()
+          .optional()
+          .describe("Education: higher, special_secondary, secondary, bachelor, master"),
+        schedule: z
+          .string()
+          .optional()
+          .describe("Schedule: fullDay, shift, flexible, remote, flyInFlyOut"),
+        employment: z
+          .string()
+          .optional()
+          .describe("Employment type: full, part, project"),
+        salary: z
+          .number()
+          .int()
+          .optional()
+          .describe("Minimum salary in BYR"),
+        only_with_salary: z
+          .boolean()
+          .optional()
+          .describe("Only show vacancies with specified salary"),
+        order_by: z
+          .string()
+          .optional()
+          .describe("Sort: relevance, publication_time, salary_desc, salary_asc"),
+        page: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe("Page number"),
+      },
+    },
+    async ({ text, area, experience, education, schedule, employment, salary, only_with_salary, order_by, page }) => {
+      try {
+        const result = await rabotaSearch({
+          text, area, experience, education, schedule, employment, salary, only_with_salary, order_by, page,
         });
         return { content: [{ type: "text", text: result }] };
       } catch (error) {
