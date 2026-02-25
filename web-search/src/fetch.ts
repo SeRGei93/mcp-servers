@@ -57,6 +57,10 @@ import {
   extractRabotaBySearchContent,
 } from "./rabota_by/rabota-page.js";
 import {
+  isZippybusUrl,
+  extractZippybusContent,
+} from "./zippybus/zippybus-page.js";
+import {
   isRelaxEstablishmentUrl,
   extractRelaxEstablishmentContent,
   isRelaxAfishaUrl,
@@ -259,6 +263,9 @@ export async function fetchPageAsMarkdown(
     if (r) { specialHtml = r.html; specialTitle = r.title; }
   } else if (isRabotaBySearchUrl(url)) {
     const r = extractRabotaBySearchContent(rawHtml);
+    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  } else if (isZippybusUrl(url)) {
+    const r = extractZippybusContent(rawHtml);
     if (r) { specialHtml = r.html; specialTitle = r.title; }
   } else if (isRelaxEstablishmentUrl(url)) {
     const r = extractRelaxEstablishmentContent(rawHtml);

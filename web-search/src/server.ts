@@ -13,6 +13,7 @@ import {
   KUFAR_SEARCH_TOOL_DESCRIPTION,
   NESTY_SEARCH_TOOL_DESCRIPTION,
   RABOTA_SEARCH_TOOL_DESCRIPTION,
+  TRANSPORT_SEARCH_TOOL_DESCRIPTION,
 } from "./config.js";
 import { performBatchWebSearch, performWebSearch } from "./search.js";
 import { fetchPageAsMarkdown } from "./fetch.js";
@@ -33,6 +34,7 @@ import { avbySearch } from "./cars_av_by/search.js";
 import { nestySearch, fetchNestyFilters, fetchNestySubDistricts, getCityNames, getMetroCities } from "./nesty/search.js";
 import { kufarSearch, fetchKufarCategories, fetchKufarSubcategories, getKufarTopRegions, getKufarAreas } from "./kufar/search.js";
 import { rabotaSearch } from "./rabota_by/search.js";
+import { zippybusSearch } from "./zippybus/search.js";
 import {
   RELAX_CITIES,
   relaxPlaceSearch,
@@ -520,6 +522,49 @@ export function createServer(): McpServer {
         const result = await rabotaSearch({
           text, area, experience, education, schedule, employment, salary, only_with_salary, order_by, page,
         });
+        return { content: [{ type: "text", text: result }] };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "transport_search",
+    {
+      description: TRANSPORT_SEARCH_TOOL_DESCRIPTION,
+      inputSchema: {
+        city: z
+          .string()
+          .min(1)
+          .describe(
+            "City slug: minsk, brest, vitebsk, grodno, gomel, mogilev, baranovichi, borisov, " +
+            "lida, pinsk, polotsk, novopolotsk, molodechno, zhlobin, kobrin, volkovysk, " +
+            "smolevichi, zhodino, zaslavl, vileyka, glubokoe, luninets, postavy, nesvizh, " +
+            "myadel, dobrush, krichev, stolin, ivanovo, gorki-region, byhov, " +
+            "belynichi-region, krichev-region, pinsk-region, slavgorod-region, mstislavskiy-rayon"
+          ),
+        transport: z
+          .string()
+          .optional()
+          .describe("Transport type: bus, trolleybus, tram, routetaxi"),
+        route: z
+          .string()
+          .optional()
+          .describe("Route number, e.g. \"25\", \"7a\", \"3s\". Requires transport to be specified."),
+      },
+    },
+    async ({ city, transport, route }) => {
+      try {
+        const result = await zippybusSearch({ city, transport, route });
         return { content: [{ type: "text", text: result }] };
       } catch (error) {
         return {

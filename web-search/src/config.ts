@@ -53,6 +53,12 @@ export const RABOTA_SEARCH_TOOL_DESCRIPTION =
   "experience level, education, schedule, employment type, minimum salary in BYR, " +
   "salary filter flag, sorting and page. Returns vacancy listings.";
 
+export const TRANSPORT_SEARCH_TOOL_DESCRIPTION =
+  "Search public transport schedules on zippybus.com (Belarus). " +
+  "Takes city slug (required), optional transport type (bus, trolleybus, tram, routetaxi), " +
+  "and optional route number. Without transport/route shows all available routes for the city. " +
+  "With transport and route shows stops list with schedule.";
+
 export const NESTY_SEARCH_TOOL_DESCRIPTION =
   "Search apartment rental listings on nesty.by aggregator (Belarus). " +
   "Takes city slug (minsk, brest, grodno, gomel, mogilev, vitebsk), optional rooms, price range in USD, " +
