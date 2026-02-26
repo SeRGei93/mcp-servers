@@ -27,7 +27,10 @@ function stripJunk(html: string): string {
   const dom = new JSDOM(html);
   const doc = dom.window.document;
   const body = doc.body;
-  if (!body) return "";
+  if (!body) {
+    dom.window.close();
+    return "";
+  }
 
   for (const selector of JUNK_SELECTORS) {
     body.querySelectorAll(selector).forEach((el) => el.remove());
@@ -59,7 +62,9 @@ function stripJunk(html: string): string {
   }
   comments.forEach((c) => c.remove());
 
-  return body.innerHTML;
+  const result = body.innerHTML;
+  dom.window.close();
+  return result;
 }
 
 /**
@@ -91,6 +96,7 @@ export function extractYandexPogodaContent(
     "Погода — Яндекс.Погода";
 
   const bodyHtml = doc.body?.innerHTML ?? "";
+  dom.window.close();
   if (!bodyHtml.trim()) return null;
 
   const cleaned = stripJunk(html);

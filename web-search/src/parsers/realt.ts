@@ -161,7 +161,10 @@ export function parseRealtArticle(html: string, url: string): NewsArticle | null
   const doc = dom.window.document;
 
   const container = doc.querySelector(".inner-center-content");
-  if (!container) return null;
+  if (!container) {
+    dom.window.close();
+    return null;
+  }
 
   const source = "realt.by";
 
@@ -230,6 +233,8 @@ export function parseRealtArticle(html: string, url: string): NewsArticle | null
     body = turndown.turndown(clone.innerHTML).trim();
   }
 
+  dom.window.close();
+
   if (!title && !body) return null;
 
   return {
@@ -255,7 +260,10 @@ export function extractRealtObjectContent(html: string): RealtResult | null {
   const title = doc.querySelector("title")?.textContent?.trim() ?? "";
 
   const main = doc.querySelector("main");
-  if (!main) return null;
+  if (!main) {
+    dom.window.close();
+    return null;
+  }
 
   const container = main.cloneNode(true) as Element;
 
@@ -266,6 +274,8 @@ export function extractRealtObjectContent(html: string): RealtResult | null {
     .replace(/\s{2,}/g, " ")
     .replace(/>\s+</g, "><")
     .trim();
+
+  dom.window.close();
 
   if (!cleanHtml) return null;
 
@@ -283,7 +293,10 @@ export function extractRealtArticleContent(html: string): RealtResult | null {
   const title = doc.querySelector("title")?.textContent?.trim() ?? "";
 
   const center = doc.querySelector(".inner-center-content");
-  if (!center) return null;
+  if (!center) {
+    dom.window.close();
+    return null;
+  }
 
   const container = center.cloneNode(true) as Element;
 
@@ -294,6 +307,8 @@ export function extractRealtArticleContent(html: string): RealtResult | null {
     .replace(/\s{2,}/g, " ")
     .replace(/>\s+</g, "><")
     .trim();
+
+  dom.window.close();
 
   if (!cleanHtml) return null;
 

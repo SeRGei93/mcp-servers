@@ -1,7 +1,7 @@
 import { JSDOM } from "jsdom";
 
 export interface GismeteoResult {
-  text: string; // Очищенный HTML
+  html: string; // Очищенный HTML
   title: string;
 }
 
@@ -141,7 +141,10 @@ export function extractGismeteoContent(html: string): GismeteoResult | null {
     }
   }
 
-  if (container.children.length === 0) return null;
+  if (container.children.length === 0) {
+    dom.window.close();
+    return null;
+  }
 
   // Удаляем мусор и служебные атрибуты
   removeJunk(container);
@@ -153,7 +156,9 @@ export function extractGismeteoContent(html: string): GismeteoResult | null {
     .replace(/>\s+</g, "><")
     .trim();
 
+  dom.window.close();
+
   if (!cleanHtml) return null;
 
-  return { text: cleanHtml, title };
+  return { html: cleanHtml, title };
 }

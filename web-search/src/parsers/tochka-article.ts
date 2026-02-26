@@ -33,7 +33,10 @@ export function parseTochkaArticle(html: string, url: string): NewsArticle | nul
   const doc = dom.window.document;
 
   const container = doc.querySelector(".l-news-detail");
-  if (!container) return null;
+  if (!container) {
+    dom.window.close();
+    return null;
+  }
 
   const source = "tochka.by";
 
@@ -74,6 +77,8 @@ export function parseTochkaArticle(html: string, url: string): NewsArticle | nul
     const t = link.textContent?.trim();
     if (t && t !== "Теги") tags.push(t);
   }
+
+  dom.window.close();
 
   if (!title && !body) return null;
 

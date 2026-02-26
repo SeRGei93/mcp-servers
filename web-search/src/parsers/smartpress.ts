@@ -27,17 +27,22 @@ export function extractSmartpressNewsContent(html: string): SmartpressResult | n
   const title = doc.querySelector("title")?.textContent?.trim() ?? "Новости — Smartpress.by";
 
   const list = doc.querySelector(".list-event:not(.aside__type-1)") ?? doc.querySelector(".list-event");
-  if (!list) return null;
+  if (!list) {
+    dom.window.close();
+    return null;
+  }
 
   const clone = list.cloneNode(true) as Element;
   clone
     .querySelectorAll("script:not([type='application/ld+json']), style, noscript")
     .forEach((el) => el.remove());
 
-  return {
+  const result = {
     html: clone.outerHTML,
     title,
   };
+  dom.window.close();
+  return result;
 }
 
 function resolveUrl(href: string, baseUrl: string): string {
@@ -73,7 +78,10 @@ export const smartpressParser: NewsParser = {
     const dom = new JSDOM(html, { url: baseUrl });
     const doc = dom.window.document;
     const list = doc.querySelector(".list-event:not(.aside__type-1)") ?? doc.querySelector(".list-event");
-    if (!list) return [];
+    if (!list) {
+      dom.window.close();
+      return [];
+    }
 
     const items = list.querySelectorAll("li");
     const result: NewsItem[] = [];
@@ -107,6 +115,7 @@ export const smartpressParser: NewsParser = {
       });
     }
 
+    dom.window.close();
     return result;
   },
 };

@@ -33,7 +33,10 @@ export function parseSmartpressArticle(html: string, url: string): NewsArticle |
   const doc = dom.window.document;
 
   const container = doc.querySelector(".article-body");
-  if (!container) return null;
+  if (!container) {
+    dom.window.close();
+    return null;
+  }
 
   const source = "smartpress.by";
 
@@ -90,6 +93,8 @@ export function parseSmartpressArticle(html: string, url: string): NewsArticle |
     }
     body = turndown.turndown(clone.innerHTML).trim();
   }
+
+  dom.window.close();
 
   if (!title && !body) return null;
 

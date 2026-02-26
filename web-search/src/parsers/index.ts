@@ -19,9 +19,14 @@ import {
   isOnlinerArticleUrl,
   parseOnlinerArticle,
 } from "./onliner-article.js";
+import { isTochkaArticleUrl, parseTochkaArticle } from "./tochka-article.js";
+import { isSmartpressArticleUrl, parseSmartpressArticle } from "./smartpress-article.js";
+import { isRealtArticleUrl, parseRealtArticle } from "./realt.js";
 import {
   SEARCH_NEWS_MAX_TOTAL,
   SEARCH_NEWS_MIN_ONLINER,
+  CACHE_TTL,
+  CACHE_DIR,
 } from "../config.js";
 
 const PARSER_REGISTRY = new Map<string, NewsParser>();
@@ -53,12 +58,6 @@ const SMARTPRESS_URLS = [
   "https://smartpress.by/news/",
 ] as const;
 
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 минут
-
-const CACHE_DIR =
-  process.env.NEWS_CACHE_DIR ??
-  join(process.cwd(), ".cache", "news");
-
 /**
  * Стабильный идентификатор кеша для каждого сайта.
  * Один сайт = один файл кеша.
@@ -78,12 +77,12 @@ function getCacheIdForSite(siteInput: string): string {
 }
 
 function getCacheFilePath(cacheId: string): string {
-  return join(CACHE_DIR, `${cacheId}.json`);
+  return join(CACHE_DIR.news, `${cacheId}.json`);
 }
 
 async function ensureCacheDir(): Promise<void> {
-  if (!existsSync(CACHE_DIR)) {
-    await mkdir(CACHE_DIR, { recursive: true });
+  if (!existsSync(CACHE_DIR.news)) {
+    await mkdir(CACHE_DIR.news, { recursive: true });
   }
 }
 
@@ -110,7 +109,7 @@ async function writeCache(
   await ensureCacheDir();
   const filePath = getCacheFilePath(cacheId);
   const payload = JSON.stringify({
-    expiresAt: Date.now() + CACHE_TTL_MS,
+    expiresAt: Date.now() + CACHE_TTL.news,
     data,
   });
   await writeFile(filePath, payload, "utf-8");
@@ -133,10 +132,6 @@ export async function fetchNewsArticle(
   url: string,
   timeoutMs: number = 30000
 ): Promise<NewsArticle | null> {
-  const { isOnlinerArticleUrl, parseOnlinerArticle } = await import("./onliner-article.js");
-  const { isTochkaArticleUrl, parseTochkaArticle } = await import("./tochka-article.js");
-  const { isSmartpressArticleUrl, parseSmartpressArticle } = await import("./smartpress-article.js");
-  const { isRealtArticleUrl, parseRealtArticle } = await import("./realt.js");
   const html = await fetchRawHtml(url, timeoutMs);
   if (isOnlinerArticleUrl(url)) return parseOnlinerArticle(html, url);
   if (isTochkaArticleUrl(url)) return parseTochkaArticle(html, url);

@@ -94,6 +94,7 @@ export const tochkaParser: NewsParser = {
       }
     }
 
+    dom.window.close();
     return result;
   },
 };

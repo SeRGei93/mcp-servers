@@ -110,7 +110,7 @@ export async function fetchWeather(slug: string, periodSlug: string): Promise<st
     throw new Error(`Failed to parse weather data for ${city.name} (${period.name})`);
   }
 
-  const data = `# ${result.title}\n\n${result.text}`;
+  const data = `# ${result.title}\n\n${result.html}`;
   await writeCache(slug, periodSlug, data);
 
   return data;

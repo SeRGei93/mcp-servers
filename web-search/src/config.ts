@@ -22,6 +22,23 @@ export const CONFIG = {
   },
 } as const;
 
+export const CACHE_TTL = {
+  fetch: 10 * 60 * 1000,           // 10 минут
+  news: 30 * 60 * 1000,            // 30 минут
+  weather: 60 * 60 * 1000,         // 1 час
+  posts: 10 * 60 * 1000,           // 10 минут
+  actualized: 60 * 60 * 1000,      // 1 час
+  filters: 30 * 24 * 60 * 60 * 1000, // 30 дней
+} as const;
+
+export const CACHE_DIR = {
+  fetch: process.env.FETCH_CACHE_DIR ?? join(process.cwd(), ".cache", "fetch"),
+  news: process.env.NEWS_CACHE_DIR ?? join(process.cwd(), ".cache", "news"),
+  weather: process.env.WEATHER_CACHE_DIR ?? join(process.cwd(), ".cache", "weather"),
+  nesty: process.env.NESTY_CACHE_DIR ?? join(process.cwd(), ".cache", "nesty"),
+  avby: process.env.AVBY_CACHE_DIR ?? join(process.cwd(), ".cache", "avby"),
+} as const;
+
 export const WEB_SEARCH_TOOL_DESCRIPTION =
   "Performs a web search. " +
   "Use for general queries, recent events, and broad information gathering. " +
@@ -74,13 +91,6 @@ export const SEARCH_NEWS_MIN_ONLINER = 15;
 export const FETCH_LIMITS = {
   timeoutMs: 30000,
 } as const;
-
-export const FETCH_CACHE_TTL_MS = 10 * 60 * 1000; // 10 минут
-export const FETCH_CACHE_DIR =
-  process.env.FETCH_CACHE_DIR ??
-  (process.env.NEWS_CACHE_DIR
-    ? join(dirname(process.env.NEWS_CACHE_DIR), "fetch")
-    : join(process.cwd(), ".cache", "fetch"));
 
 export const SEARCH_API_URL = process.env.SEARXNG_URL ?? "http://searxng:8080";
 export const SEARCH_ENGINES = process.env.SEARXNG_ENGINES ?? "google,yandex";

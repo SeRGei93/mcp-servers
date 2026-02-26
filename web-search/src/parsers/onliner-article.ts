@@ -39,7 +39,10 @@ export function parseOnlinerArticle(html: string, url: string): NewsArticle | nu
   const doc = dom.window.document;
 
   const container = doc.querySelector(".news-container");
-  if (!container) return null;
+  if (!container) {
+    dom.window.close();
+    return null;
+  }
 
   const source = (() => {
     try {
@@ -112,6 +115,8 @@ export function parseOnlinerArticle(html: string, url: string): NewsArticle | nu
     const t = link.textContent?.trim();
     if (t) tags.push(t);
   }
+
+  dom.window.close();
 
   if (!title && !body) return null;
 

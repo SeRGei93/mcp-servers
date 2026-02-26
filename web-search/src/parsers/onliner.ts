@@ -29,7 +29,10 @@ export const onlinerParser: NewsParser = {
     const doc = dom.window.document;
 
     const container = doc.querySelector(".news-tidings");
-    if (!container) return [];
+    if (!container) {
+      dom.window.close();
+      return [];
+    }
 
     const items = container.querySelectorAll(".news-tidings__item");
     const result: NewsItem[] = [];
@@ -75,6 +78,7 @@ export const onlinerParser: NewsParser = {
       }
     }
 
+    dom.window.close();
     return result;
   },
 };

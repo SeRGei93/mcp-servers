@@ -81,7 +81,9 @@ function stripScriptsAndJson(html: string): string {
       "script:not([type='application/ld+json']), [type='application/json']"
     )
     .forEach((el) => el.remove());
-  return container.innerHTML;
+  const result = container.innerHTML;
+  dom.window.close();
+  return result;
 }
 
 /**
@@ -93,9 +95,14 @@ export function extractShopCatalogContent(html: string): ShopProductResult | nul
   const title = doc.querySelector("title")?.textContent?.trim() ?? "Shop.by";
 
   const content = doc.querySelector(".PageType__BlockRightWrapper");
-  if (!content) return null;
+  if (!content) {
+    dom.window.close();
+    return null;
+  }
 
-  return { html: stripScriptsAndJson(content.innerHTML), title };
+  const result = { html: stripScriptsAndJson(content.innerHTML), title };
+  dom.window.close();
+  return result;
 }
 
 /**
@@ -107,7 +114,12 @@ export function extractShopProductContent(html: string): ShopProductResult | nul
   const title = doc.querySelector("title")?.textContent?.trim() ?? "Shop.by";
 
   const content = doc.querySelector(".PageModel__shopContent");
-  if (!content) return null;
+  if (!content) {
+    dom.window.close();
+    return null;
+  }
 
-  return { html: stripScriptsAndJson(content.innerHTML), title };
+  const result = { html: stripScriptsAndJson(content.innerHTML), title };
+  dom.window.close();
+  return result;
 }

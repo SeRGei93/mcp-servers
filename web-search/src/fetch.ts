@@ -81,6 +81,36 @@ import {
   extractMed103ClinicSubdomainContent,
 } from "./103by/103by-page.js";
 
+interface PageParser {
+  match: (url: string) => boolean;
+  extract: (html: string) => { html: string; title: string } | null;
+}
+
+const PAGE_PARSERS: PageParser[] = [
+  { match: isCatalogOnlinerUrl, extract: extractCatalogOnlinerContent },
+  { match: isShopCatalogUrl, extract: extractShopCatalogContent },
+  { match: isShopProductUrl, extract: extractShopProductContent },
+  { match: isSmartpressNewsListUrl, extract: extractSmartpressNewsContent },
+  { match: isGismeteoWeatherUrl, extract: extractGismeteoContent },
+  { match: isYandexPogodaUrl, extract: extractYandexPogodaContent },
+  { match: isRealtObjectUrl, extract: extractRealtObjectContent },
+  { match: isAvByListingUrl, extract: extractAvByListingContent },
+  { match: isAvByCatalogUrl, extract: extractAvByCatalogContent },
+  { match: isKufarItemUrl, extract: extractKufarItemContent },
+  { match: isKufarListingUrl, extract: extractKufarListingContent },
+  { match: isRabotaByVacancyUrl, extract: extractRabotaByVacancyContent },
+  { match: isRabotaBySearchUrl, extract: extractRabotaBySearchContent },
+  { match: isZippybusUrl, extract: extractZippybusContent },
+  { match: isRelaxEstablishmentUrl, extract: extractRelaxEstablishmentContent },
+  { match: isRelaxAfishaUrl, extract: extractRelaxAfishaContent },
+  { match: isRelaxCatalogUrl, extract: extractRelaxCatalogContent },
+  { match: isMed103AptekaUrl, extract: extractMed103AptekaContent },
+  { match: isMed103DoctorProfileUrl, extract: extractMed103DoctorProfileContent },
+  { match: isMed103DoctorListUrl, extract: extractMed103DoctorListContent },
+  { match: isMed103CatalogUrl, extract: extractMed103CatalogContent },
+  { match: isMed103ClinicSubdomainUrl, extract: extractMed103ClinicSubdomainContent },
+];
+
 /** Селекторы мусора удаляемого при универсальной очистке */
 const JUNK_SELECTORS = [
   // Технические теги
@@ -190,6 +220,7 @@ function cleanHtml(url: string, html: string): { title: string; html: string } {
     ? "\n\n" + jsonLdBlocks.map((b) => `<script type="application/ld+json">${b}</script>`).join("\n")
     : "";
 
+  dom.window.close();
   return { title, html: clean + jsonLdSection };
 }
 
@@ -225,72 +256,15 @@ export async function fetchPageAsMarkdown(
   let specialHtml: string | null = null;
   let specialTitle: string | null = null;
 
-  if (isCatalogOnlinerUrl(url)) {
-    const r = extractCatalogOnlinerContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isShopCatalogUrl(url)) {
-    const r = extractShopCatalogContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isShopProductUrl(url)) {
-    const r = extractShopProductContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isSmartpressNewsListUrl(url)) {
-    const r = extractSmartpressNewsContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isGismeteoWeatherUrl(url)) {
-    const r = extractGismeteoContent(rawHtml);
-    if (r) { specialHtml = r.text; specialTitle = r.title; }
-  } else if (isYandexPogodaUrl(url)) {
-    const r = extractYandexPogodaContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isRealtObjectUrl(url)) {
-    const r = extractRealtObjectContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isAvByListingUrl(url)) {
-    const r = extractAvByListingContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isAvByCatalogUrl(url)) {
-    const r = extractAvByCatalogContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isKufarItemUrl(url)) {
-    const r = extractKufarItemContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isKufarListingUrl(url)) {
-    const r = extractKufarListingContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isRabotaByVacancyUrl(url)) {
-    const r = extractRabotaByVacancyContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isRabotaBySearchUrl(url)) {
-    const r = extractRabotaBySearchContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isZippybusUrl(url)) {
-    const r = extractZippybusContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isRelaxEstablishmentUrl(url)) {
-    const r = extractRelaxEstablishmentContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isRelaxAfishaUrl(url)) {
-    const r = extractRelaxAfishaContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isRelaxCatalogUrl(url)) {
-    const r = extractRelaxCatalogContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isMed103AptekaUrl(url)) {
-    const r = extractMed103AptekaContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isMed103DoctorProfileUrl(url)) {
-    const r = extractMed103DoctorProfileContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isMed103DoctorListUrl(url)) {
-    const r = extractMed103DoctorListContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isMed103CatalogUrl(url)) {
-    const r = extractMed103CatalogContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
-  } else if (isMed103ClinicSubdomainUrl(url)) {
-    const r = extractMed103ClinicSubdomainContent(rawHtml);
-    if (r) { specialHtml = r.html; specialTitle = r.title; }
+  for (const parser of PAGE_PARSERS) {
+    if (parser.match(url)) {
+      const result = parser.extract(rawHtml);
+      if (result) {
+        specialHtml = result.html;
+        specialTitle = result.title;
+        break;
+      }
+    }
   }
 
   let output: string;

@@ -37,8 +37,6 @@ export async function ensureMemoryFilePath(): Promise<string> {
   }
 }
 
-let MEMORY_FILE_PATH: string;
-
 // Knowledge Graph types
 export interface Entity {
   name: string;
@@ -214,7 +212,22 @@ export class KnowledgeGraphManager {
   }
 }
 
-let knowledgeGraphManager: KnowledgeGraphManager;
+let knowledgeGraphManagerPromise: Promise<KnowledgeGraphManager> | null = null;
+let memoryFilePath: string | null = null;
+
+async function getKnowledgeGraphManager(): Promise<KnowledgeGraphManager> {
+  if (!knowledgeGraphManagerPromise) {
+    knowledgeGraphManagerPromise = ensureMemoryFilePath().then((path) => {
+      memoryFilePath = path;
+      return new KnowledgeGraphManager(path);
+    });
+  }
+  return knowledgeGraphManagerPromise;
+}
+
+function getMemoryFilePath(): string | null {
+  return memoryFilePath;
+}
 
 // Zod schemas
 const EntitySchema = z.object({
@@ -236,7 +249,6 @@ function createServer(): McpServer {
     version: "0.6.3-http",
   });
 
-  // Register all tools
   server.registerTool(
   "create_entities",
   {
@@ -246,7 +258,8 @@ function createServer(): McpServer {
     outputSchema: { entities: z.array(EntitySchema) }
   },
   async ({ entities }) => {
-    const result = await knowledgeGraphManager.createEntities(entities);
+    const manager = await getKnowledgeGraphManager();
+    const result = await manager.createEntities(entities);
     return {
       content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
       structuredContent: { entities: result }
@@ -263,7 +276,8 @@ server.registerTool(
     outputSchema: { relations: z.array(RelationSchema) }
   },
   async ({ relations }) => {
-    const result = await knowledgeGraphManager.createRelations(relations);
+    const manager = await getKnowledgeGraphManager();
+    const result = await manager.createRelations(relations);
     return {
       content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
       structuredContent: { relations: result }
@@ -290,7 +304,8 @@ server.registerTool(
     }
   },
   async ({ observations }) => {
-    const result = await knowledgeGraphManager.addObservations(observations);
+    const manager = await getKnowledgeGraphManager();
+    const result = await manager.addObservations(observations);
     return {
       content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
       structuredContent: { results: result }
@@ -307,7 +322,8 @@ server.registerTool(
     outputSchema: { success: z.boolean(), message: z.string() }
   },
   async ({ entityNames }) => {
-    await knowledgeGraphManager.deleteEntities(entityNames);
+    const manager = await getKnowledgeGraphManager();
+    await manager.deleteEntities(entityNames);
     return {
       content: [{ type: "text" as const, text: "Entities deleted successfully" }],
       structuredContent: { success: true, message: "Entities deleted successfully" }
@@ -329,7 +345,8 @@ server.registerTool(
     outputSchema: { success: z.boolean(), message: z.string() }
   },
   async ({ deletions }) => {
-    await knowledgeGraphManager.deleteObservations(deletions);
+    const manager = await getKnowledgeGraphManager();
+    await manager.deleteObservations(deletions);
     return {
       content: [{ type: "text" as const, text: "Observations deleted successfully" }],
       structuredContent: { success: true, message: "Observations deleted successfully" }
@@ -346,7 +363,8 @@ server.registerTool(
     outputSchema: { success: z.boolean(), message: z.string() }
   },
   async ({ relations }) => {
-    await knowledgeGraphManager.deleteRelations(relations);
+    const manager = await getKnowledgeGraphManager();
+    await manager.deleteRelations(relations);
     return {
       content: [{ type: "text" as const, text: "Relations deleted successfully" }],
       structuredContent: { success: true, message: "Relations deleted successfully" }
@@ -366,7 +384,8 @@ server.registerTool(
     }
   },
   async () => {
-    const graph = await knowledgeGraphManager.readGraph();
+    const manager = await getKnowledgeGraphManager();
+    const graph = await manager.readGraph();
     return {
       content: [{ type: "text" as const, text: JSON.stringify(graph, null, 2) }],
       structuredContent: { ...graph }
@@ -386,7 +405,8 @@ server.registerTool(
     }
   },
   async ({ query }) => {
-    const graph = await knowledgeGraphManager.searchNodes(query);
+    const manager = await getKnowledgeGraphManager();
+    const graph = await manager.searchNodes(query);
     return {
       content: [{ type: "text" as const, text: JSON.stringify(graph, null, 2) }],
       structuredContent: { ...graph }
@@ -406,7 +426,8 @@ server.registerTool(
     }
   },
   async ({ names }) => {
-    const graph = await knowledgeGraphManager.openNodes(names);
+    const manager = await getKnowledgeGraphManager();
+    const graph = await manager.openNodes(names);
     return {
       content: [{ type: "text" as const, text: JSON.stringify(graph, null, 2) }],
       structuredContent: { ...graph }
@@ -419,8 +440,7 @@ server.registerTool(
 
 // HTTP Server setup
 async function main() {
-  MEMORY_FILE_PATH = await ensureMemoryFilePath();
-  knowledgeGraphManager = new KnowledgeGraphManager(MEMORY_FILE_PATH);
+  await getKnowledgeGraphManager();
 
   const app = express();
   const PORT = parseInt(process.env.PORT || '3000');
@@ -434,7 +454,7 @@ async function main() {
       version: '0.6.3-http',
       transport: 'streamable-http',
       endpoint: '/mcp',
-      memoryFile: MEMORY_FILE_PATH
+      memoryFile: getMemoryFilePath()
     });
   });
 
@@ -445,7 +465,7 @@ async function main() {
       timestamp: new Date().toISOString(),
       service: 'memory-server',
       version: '0.6.3-http',
-      memoryFile: MEMORY_FILE_PATH
+      memoryFile: getMemoryFilePath()
     });
   });
 
@@ -470,7 +490,7 @@ async function main() {
   app.listen(PORT, () => {
     console.error(`[INFO] memory-server started on http://localhost:${PORT}`);
     console.error(`[INFO] MCP endpoint: POST http://localhost:${PORT}/mcp`);
-    console.error(`[INFO] Memory file: ${MEMORY_FILE_PATH}`);
+    console.error(`[INFO] Memory file: ${getMemoryFilePath()}`);
   });
 }
 

@@ -13,6 +13,7 @@ export interface RequestCount {
   second: number;
   month: number;
   lastReset: number;
+  monthStart: number;
 }
 
 export interface ResolvedRegion {

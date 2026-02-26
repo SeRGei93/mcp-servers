@@ -18,19 +18,26 @@ export function extractCatalogOnlinerContent(html: string): CatalogOnlinerResult
 
   const offers = doc.querySelector(".catalog-form__offers");
   if (offers) {
-    return { html: offers.innerHTML, title };
+    const result = { html: offers.innerHTML, title };
+    dom.window.close();
+    return result;
   }
 
   const content = doc.querySelector(".catalog-content");
   if (content) {
-    return { html: content.innerHTML, title };
+    const result = { html: content.innerHTML, title };
+    dom.window.close();
+    return result;
   }
 
   const middle = doc.querySelector(".g-middle");
   if (middle) {
-    return { html: middle.innerHTML, title };
+    const result = { html: middle.innerHTML, title };
+    dom.window.close();
+    return result;
   }
 
+  dom.window.close();
   return null;
 }
 
