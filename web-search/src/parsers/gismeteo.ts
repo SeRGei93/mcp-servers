@@ -1,4 +1,5 @@
 import { JSDOM } from "jsdom";
+import type { NewsItem, NewsParser } from "./types.js";
 
 export interface GismeteoResult {
   html: string; // Очищенный HTML
@@ -162,3 +163,109 @@ export function extractGismeteoContent(html: string): GismeteoResult | null {
 
   return { html: cleanHtml, title };
 }
+
+// --- Feed parser для новостей gismeteo ---
+
+function resolveUrl(href: string, baseUrl: string): string {
+  if (!href) return "";
+  try {
+    return new URL(href, baseUrl).href;
+  } catch {
+    return href;
+  }
+}
+
+/** Парсит ISO дату "2026-03-03T19:50:00" в Unix timestamp */
+function parseIsoTimestamp(dateStr: string): number | undefined {
+  if (!dateStr) return undefined;
+  try {
+    const ms = new Date(dateStr).getTime();
+    return Number.isNaN(ms) ? undefined : Math.floor(ms / 1000);
+  } catch {
+    return undefined;
+  }
+}
+
+export const gismeteoNewsParser: NewsParser = {
+  domains: ["www.gismeteo.by"],
+  parse(html: string, baseUrl: string): NewsItem[] {
+    const dom = new JSDOM(html, { url: baseUrl });
+    const doc = dom.window.document;
+    const result: NewsItem[] = [];
+    const seenUrls = new Set<string>();
+
+    // 1. Карточки (.card-wrap → a.rss-card)
+    const cards = doc.querySelectorAll(".card-wrap");
+    for (const card of cards) {
+      const linkEl = card.querySelector<HTMLAnchorElement>("a.rss-card");
+      if (!linkEl) continue;
+
+      const href = linkEl.getAttribute("href") ?? "";
+      const url = resolveUrl(href, baseUrl);
+      if (!url || seenUrls.has(url)) continue;
+      seenUrls.add(url);
+
+      const title = card.querySelector(".text-title")?.textContent?.trim() ?? "";
+      if (!title) continue;
+
+      const description = card.querySelector(".text-excerpt")?.textContent?.trim() ?? "";
+      const pubDate = linkEl.getAttribute("data-pub-date") ?? "";
+      const tag = linkEl.getAttribute("data-tag") ?? "";
+      const timestamp = parseIsoTimestamp(pubDate);
+
+      const date = pubDate
+        ? new Date(pubDate).toLocaleString("ru-BY", {
+            day: "numeric", month: "long", year: "numeric",
+            hour: "2-digit", minute: "2-digit",
+          })
+        : "";
+
+      result.push({
+        title,
+        url,
+        date: tag ? `${date} [${tag}]` : date,
+        views: 0,
+        description,
+        timestamp,
+      });
+    }
+
+    // 2. Список статей (.article-item)
+    const articles = doc.querySelectorAll(".article-item");
+    for (const article of articles) {
+      const href =
+        (article as Element).getAttribute("data-news-url") ??
+        (article as HTMLAnchorElement).getAttribute("href") ?? "";
+      const url = resolveUrl(href, baseUrl);
+      if (!url || seenUrls.has(url)) continue;
+      seenUrls.add(url);
+
+      const title = article.querySelector(".item-title")?.textContent?.trim() ?? "";
+      if (!title) continue;
+
+      const description = article.querySelector(".item-excerpt")?.textContent?.trim() ?? "";
+      const pubDate = (article as Element).getAttribute("data-pub-date") ?? "";
+      const tag = (article as Element).getAttribute("data-tag") ?? "";
+      const timestamp = parseIsoTimestamp(pubDate);
+
+      const date = pubDate
+        ? new Date(pubDate).toLocaleString("ru-BY", {
+            day: "numeric", month: "long", year: "numeric",
+            hour: "2-digit", minute: "2-digit",
+          })
+        : article.querySelector(".item-date")?.textContent?.trim() ?? "";
+
+      result.push({
+        title,
+        url,
+        date: tag ? `${date} [${tag}]` : date,
+        views: 0,
+        description,
+        timestamp,
+      });
+    }
+
+    dom.window.close();
+    return result;
+  },
+};

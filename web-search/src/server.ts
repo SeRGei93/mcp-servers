@@ -234,7 +234,7 @@ export function createServer(): McpServer {
           .string()
           .optional()
           .describe(
-            'News source(s). Omit for all: onliner.by, tochka.by, smartpress.by. Or specify: "onliner.by", "tochka.by", "smartpress.by" (separate multiple with ";")'
+            'News source(s). Omit for all: onliner.by, tochka.by, smartpress.by, gismeteo.by. Or specify: "onliner.by", "tochka.by", "smartpress.by", "gismeteo.by" (separate multiple with ";")'
           ),
         timeoutMs: z
           .number()
