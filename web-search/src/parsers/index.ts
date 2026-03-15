@@ -16,6 +16,7 @@ import { onlinerParser } from "./onliner.js";
 import { tochkaParser } from "./tochka.js";
 import { smartpressParser } from "./smartpress.js";
 import { gismeteoNewsParser } from "./gismeteo.js";
+import { wikidomParser } from "./wikidom.js";
 import {
   isOnlinerArticleUrl,
   parseOnlinerArticle,
@@ -42,6 +43,7 @@ registerParser(onlinerParser);
 registerParser(tochkaParser);
 registerParser(smartpressParser);
 registerParser(gismeteoNewsParser);
+registerParser(wikidomParser);
 
 const ONLINER_URLS = [
   "https://money.onliner.by/",
@@ -64,6 +66,10 @@ const GISMETEO_URLS = [
   "https://www.gismeteo.by/news/",
 ] as const;
 
+const WIKIDOM_URLS = [
+  "https://wikidom.by/blog/",
+] as const;
+
 /**
  * Стабильный идентификатор кеша для каждого сайта.
  * Один сайт = один файл кеша.
@@ -76,6 +82,8 @@ function getCacheIdForSite(siteInput: string): string {
     return "smartpress_by";
   if (s === "gismeteo.by" || s === "www.gismeteo.by" || s === "https://www.gismeteo.by")
     return "gismeteo_by";
+  if (s === "wikidom.by" || s === "https://wikidom.by")
+    return "wikidom_by";
   try {
     const url = new URL(s.startsWith("http") ? s : `https://${s}`);
     return url.hostname.replace(/\./g, "_");
@@ -167,6 +175,9 @@ export function normalizeSites(site: string): string[] {
   if (trimmed === "gismeteo.by" || trimmed === "www.gismeteo.by" || trimmed === "https://www.gismeteo.by") {
     return [...GISMETEO_URLS];
   }
+  if (trimmed === "wikidom.by" || trimmed === "https://wikidom.by") {
+    return [...WIKIDOM_URLS];
+  }
   try {
     const url = new URL(trimmed.startsWith("http") ? trimmed : `https://${trimmed}`);
     return [url.href];
@@ -202,6 +213,11 @@ function isSmartpressSite(siteInput: string): boolean {
 function isGismeteoSite(siteInput: string): boolean {
   const s = siteInput.trim().toLowerCase();
   return s === "gismeteo.by" || s === "www.gismeteo.by" || s === "https://www.gismeteo.by";
+}
+
+function isWikidomSite(siteInput: string): boolean {
+  const s = siteInput.trim().toLowerCase();
+  return s === "wikidom.by" || s === "https://wikidom.by";
 }
 
 const ONLINER_SOURCE = "onliner.by";
@@ -394,6 +410,35 @@ export async function searchNews(
           url: "https://www.gismeteo.by/news/",
           items: [],
           error: "Парсер для gismeteo.by не найден",
+        });
+      }
+    } else if (isWikidomSite(siteInput) && urls.length > 0) {
+      const parser = getParserForUrl(urls[0]);
+      if (parser) {
+        try {
+          const html = await fetchRawHtml(urls[0], timeoutMs);
+          const items = parser.parse(html, urls[0]);
+          items.sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+          siteSections.push({
+            source: "wikidom.by",
+            url: "https://wikidom.by/blog/",
+            items,
+          });
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          siteSections.push({
+            source: "wikidom.by",
+            url: "https://wikidom.by/blog/",
+            items: [],
+            error: errMsg,
+          });
+        }
+      } else {
+        siteSections.push({
+          source: "wikidom.by",
+          url: "https://wikidom.by/blog/",
+          items: [],
+          error: "Парсер для wikidom.by не найден",
         });
       }
     } else {

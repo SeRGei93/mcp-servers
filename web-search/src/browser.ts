@@ -95,14 +95,14 @@ function getBrowser(): Promise<Browser> {
 }
 
 /**
- * Загружает HTML-страницу через headless Chromium.
- * Используется для сайтов, блокирующих plain fetch (WAF).
+ * Opens a browser page, navigates to the URL, and passes the Page to the callback.
+ * Handles semaphores, browser lifecycle, and page cleanup.
  */
-export async function fetchHtmlWithBrowser(
+export async function withBrowserPage<T>(
   url: string,
   timeoutMs: number,
-  waitSelector?: string,
-): Promise<string> {
+  fn: (page: Page) => Promise<T>,
+): Promise<T> {
   const hostname = new URL(url).hostname;
   const dSem = getDomainSem(hostname);
 
@@ -135,16 +135,7 @@ export async function fetchHtmlWithBrowser(
       throw new Error(`Failed to fetch URL: HTTP ${status}`);
     }
 
-    // Wait for dynamic content if selector specified (e.g. client-side rendered listings)
-    if (waitSelector) {
-      try {
-        await page.waitForSelector(waitSelector, { timeout: 15_000 });
-      } catch {
-        // Selector didn't appear (empty results or timeout) — return current content
-      }
-    }
-
-    return await page.content();
+    return await fn(page);
   } finally {
     if (page) {
       await page.close().catch(() => {});
@@ -152,6 +143,27 @@ export async function fetchHtmlWithBrowser(
     releaseSem(globalSem);
     if (dSem) releaseSem(dSem);
   }
+}
+
+/**
+ * Загружает HTML-страницу через headless Chromium.
+ * Используется для сайтов, блокирующих plain fetch (WAF).
+ */
+export async function fetchHtmlWithBrowser(
+  url: string,
+  timeoutMs: number,
+  waitSelector?: string,
+): Promise<string> {
+  return withBrowserPage(url, timeoutMs, async (page) => {
+    if (waitSelector) {
+      try {
+        await page.waitForSelector(waitSelector, { timeout: 15_000 });
+      } catch {
+        // Selector didn't appear (empty results or timeout) — return current content
+      }
+    }
+    return page.content();
+  });
 }
 
 /** Проверяет, нужен ли браузер для данного URL */

@@ -234,7 +234,7 @@ export function createServer(): McpServer {
           .string()
           .optional()
           .describe(
-            'News source(s). Omit for all: onliner.by, tochka.by, smartpress.by, gismeteo.by. Or specify: "onliner.by", "tochka.by", "smartpress.by", "gismeteo.by" (separate multiple with ";")'
+            'News source(s). Omit for all: onliner.by, tochka.by, smartpress.by, gismeteo.by, wikidom.by. Or specify: "onliner.by", "tochka.by", "smartpress.by", "gismeteo.by", "wikidom.by" (separate multiple with ";")'
           ),
         timeoutMs: z
           .number()
@@ -1041,48 +1041,21 @@ export function createServer(): McpServer {
     },
   );
 
-  // Resource: weather cities list
-  server.registerResource(
-    "weather_cities",
-    "weather://cities",
-    { description: "List of Belarusian cities available for weather forecast. Use city slug as {city} in weather://forecast/{city}/{period}." },
-    async (uri) => ({
-      contents: [{
-        uri: uri.href,
-        mimeType: "application/json",
-        text: JSON.stringify(
-          Object.entries(CITIES).map(([slug, city]) => ({ slug, name: city.name })),
-        ),
-      }],
-    }),
-  );
-
-  // Resource: weather forecast by city and period (gismeteo.by)
-  const periodNames = Object.entries(PERIODS).map(([k, v]) => `${k} (${v.name})`).join(", ");
-  server.registerResource(
-    "weather_forecast",
-    new ResourceTemplate("weather://forecast/{city}/{period}", {
-      list: async () => ({
-        resources: Object.entries(CITIES).flatMap(([slug, city]) =>
-          Object.entries(PERIODS).map(([periodSlug, period]) => ({
-            uri: `weather://forecast/${slug}/${periodSlug}`,
-            name: `${city.name} — ${period.name}`,
-            description: `Weather forecast for ${city.name}: ${period.name}`,
-            mimeType: "text/html",
-          })),
-        ),
+  // Tool: weather forecast (gismeteo.by)
+  server.registerTool(
+    "weather",
+    {
+      description: "Weather forecast for Belarusian cities from gismeteo.by",
+      inputSchema: z.object({
+        city: z.enum(Object.keys(CITIES) as [string, ...string[]])
+          .describe("City: " + Object.entries(CITIES).map(([k, v]) => `${k} (${v.name})`).join(", ")),
+        period: z.enum(Object.keys(PERIODS) as [string, ...string[]])
+          .describe("Period: " + Object.entries(PERIODS).map(([k, v]) => `${k} (${v.name})`).join(", ")),
       }),
-    }),
-    { description: `Weather forecast for Belarusian cities from gismeteo.by. Periods: ${periodNames}.` },
-    async (uri, { city, period }) => {
-      const data = await fetchWeather(city as string, period as string);
-      return {
-        contents: [{
-          uri: uri.href,
-          mimeType: "text/html",
-          text: data,
-        }],
-      };
+    },
+    async ({ city, period }) => {
+      const data = await fetchWeather(city, period);
+      return { content: [{ type: "text" as const, text: data }] };
     },
   );
 

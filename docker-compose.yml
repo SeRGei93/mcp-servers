@@ -41,11 +41,11 @@ services:
     environment:
       PORT: "${PORT:-3000}"
       SEARXNG_URL: "http://searxng:8080"
-      SEARXNG_ENGINES: "google,yandex"
+      SEARXNG_ENGINES: "google,google news,brave,brave news,bing,bing news,yandex"
       SEARXNG_TIMEOUT_MS: "12000"
       SEARXNG_RETRIES: "2"
       SEARXNG_RETRY_BACKOFF_MS: "350"
-      SEARXNG_CATEGORIES: "general"
+      SEARXNG_CATEGORIES: "general,news"
       RATE_LIMIT_PER_SECOND: "20"
       RATE_LIMIT_PER_MONTH: "15000"
       NEWS_CACHE_DIR: "/app/storage/news"

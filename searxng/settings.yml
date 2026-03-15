@@ -2,6 +2,12 @@ use_default_settings:
   engines:
     keep_only:
       - google
+      - google news
+      - brave
+      - brave news
+      - bing
+      - bing news
+      - yandex
 
 general:
   instance_name: "Local SearxNG"

@@ -51,7 +51,7 @@ export const FETCH_PAGE_TOOL_DESCRIPTION =
   "Fetches a web page by URL, extracts the main content, removes visual noise, and returns markdown.";
 
 export const SEARCH_NEWS_TOOL_DESCRIPTION =
-  "Fetches news feed from supported sites. Without site returns news from all sources (onliner.by, tochka.by, smartpress.by, gismeteo.by). Use site='onliner.by' for Onliner, site='tochka.by' for Tochka, site='smartpress.by' for Smartpress, site='gismeteo.by' for Gismeteo weather news. Multiple sites: site='onliner.by;smartpress.by'. Returns markdown with title, url, date, views, description.";
+  "Fetches news feed from supported sites. Without site returns news from all sources (onliner.by, tochka.by, smartpress.by, gismeteo.by, wikidom.by). Use site='onliner.by' for Onliner, site='tochka.by' for Tochka, site='smartpress.by' for Smartpress, site='gismeteo.by' for Gismeteo weather news, site='wikidom.by' for Wikidom real estate news. Multiple sites: site='onliner.by;smartpress.by'. Returns markdown with title, url, date, views, description.";
 
 export const AVBY_SEARCH_TOOL_DESCRIPTION =
   "Search car listings on cars.av.by marketplace. " +
@@ -83,7 +83,7 @@ export const NESTY_SEARCH_TOOL_DESCRIPTION =
   "metro station (from nesty://metro/{city}), sources (Realt, Kufar, Onliner, Domovita, Hata, Neagent), sorting and page. " +
   "Returns listing results with links to original sources.";
 
-export const SEARCH_NEWS_DEFAULT_SITES = ["onliner.by", "tochka.by", "smartpress.by", "gismeteo.by"] as const;
+export const SEARCH_NEWS_DEFAULT_SITES = ["onliner.by", "tochka.by", "smartpress.by", "gismeteo.by", "wikidom.by"] as const;
 
 export const SEARCH_NEWS_MAX_TOTAL = 50;
 export const SEARCH_NEWS_MIN_ONLINER = 15;

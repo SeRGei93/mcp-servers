@@ -1,9 +1,101 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { existsSync } from "fs";
 import { join, dirname } from "path";
+import { JSDOM } from "jsdom";
 import { extractGismeteoContent } from "../parsers/gismeteo.js";
-import { fetchHtmlWithBrowser } from "../browser.js";
 import { FETCH_LIMITS } from "../config.js";
+
+const ROW_LABELS: Record<string, string> = {
+  "icon-tooltip": "Погода",
+  "temperature-air": "Температура, °C",
+  "temperature-heat-index": "Ощущается, °C",
+  "wind": "Ветер (порывы), м/с",
+  "precipitation-bars": "Осадки, мм",
+  "icon-snow": "Снег, см",
+  "pressure": "Давление, мм рт.ст.",
+  "humidity": "Влажность, %",
+  "radiation": "УФ-индекс",
+  "geomagnetic": "Геомагнитная активность",
+};
+
+/** Converts cleaned gismeteo HTML into a flat accessibility-tree-like text */
+function htmlToA11yTree(html: string): string {
+  const dom = new JSDOM(html);
+  const body = dom.window.document.body;
+  const lines: string[] = [];
+
+  function txt(node: Node): string {
+    return (node.textContent ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  function walk(el: Element): void {
+    if (!txt(el)) return;
+    if (el.classList.contains("is-hide")) return;
+
+    const tag = el.tagName;
+
+    // Headings
+    const hm = tag.match(/^H(\d)$/i);
+    if (hm) {
+      lines.push(`- heading "${txt(el)}" [level=${hm[1]}]`);
+      return;
+    }
+
+    // Paragraphs inside widget-rows are handled below — skip stray ones
+    if (tag === "P") return;
+
+    // Widget rows → single labeled line
+    if (el.classList.contains("widget-row")) {
+      const dataRow = el.getAttribute("data-row");
+      if (el.querySelector(".row-item-nodata")) return;
+      if (dataRow === "snow-height") return; // CSS-positioned values, unreadable as text
+
+      const label = (dataRow && ROW_LABELS[dataRow])
+        || txt(el.querySelector(".widget-row-caption") as Node ?? { textContent: "" });
+
+      // Weather condition icons → tooltips
+      if (dataRow === "icon-tooltip") {
+        const vals = [...el.querySelectorAll("[data-tooltip]")]
+          .map(i => i.getAttribute("data-tooltip")).filter(Boolean);
+        if (vals.length) lines.push(`- ${label || "text"}: ${vals.join(" | ")}`);
+        return;
+      }
+
+      // Chart values (.value elements) — handle maxt/mint for 10-day forecasts
+      const chartVals = [...el.querySelectorAll(".chart .value")].map(i => {
+        const maxt = i.querySelector(".maxt");
+        const mint = i.querySelector(".mint");
+        if (maxt && mint) return `${txt(maxt)}/${txt(mint)}`;
+        return txt(i);
+      }).filter(Boolean);
+      if (chartVals.length) {
+        lines.push(`- ${label || "text"}: ${chartVals.join(" | ")}`);
+        return;
+      }
+
+      // Row items
+      const items = [...el.querySelectorAll(".row-item")].map(i => txt(i)).filter(Boolean);
+      if (items.length) {
+        lines.push(`- ${label || "text"}: ${items.join(" | ")}`);
+        return;
+      }
+
+      // Fallback — raw text (may be concatenated for some chart types like snow-height)
+      const t = txt(el);
+      if (t) lines.push(`- ${label || "text"}: ${t}`);
+      return;
+    }
+
+    // Generic container — recurse
+    for (const child of el.children) {
+      walk(child);
+    }
+  }
+
+  walk(body);
+  dom.window.close();
+  return lines.join("\n");
+}
 
 export interface City {
   name: string;
@@ -103,14 +195,22 @@ export async function fetchWeather(slug: string, periodSlug: string): Promise<st
   if (cached) return cached;
 
   const url = `${BASE_URL}${city.path}${period.suffix}`;
-  const html = await fetchHtmlWithBrowser(url, FETCH_LIMITS.timeoutMs);
+
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Chrome/131.0.0.0" },
+    signal: AbortSignal.timeout(FETCH_LIMITS.timeoutMs),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch weather: HTTP ${res.status}`);
+  }
+  const html = await res.text();
   const result = extractGismeteoContent(html);
 
   if (!result) {
     throw new Error(`Failed to parse weather data for ${city.name} (${period.name})`);
   }
 
-  const data = `# ${result.title}\n\n${result.html}`;
+  const data = `# ${city.name} — ${period.name}\n\n${htmlToA11yTree(result.html)}`;
   await writeCache(slug, periodSlug, data);
 
   return data;
